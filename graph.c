@@ -8,12 +8,13 @@
 
 #define MAX_VERTICES 100
 
-Vertex *vertex_init (int id) 
+Vertex *vertex_init (int dest, int weight)
 {
   Vertex* newVertex = (Vertex*)malloc(sizeof(Vertex));
-  newVertex->id = id;
-  newVertex->next = NULL;
-  newVertex->prev = NULL;
+  newVertex->edge.dest    = dest;
+  newVertex->edge.weight  = weight;
+  newVertex->next         = NULL;
+  newVertex->prev         = NULL;
   return newVertex;
 }
 
@@ -46,7 +47,7 @@ Graph* graph_init(int numVertices)
   return graph;
 }
 
-int graph_add_edge(Graph* graph, int src, int dest) 
+int graph_add_edge(Graph* graph, int src, int dest, int weight)
 {
   Vertex* newVertex = NULL;
 
@@ -61,7 +62,7 @@ int graph_add_edge(Graph* graph, int src, int dest)
   }
 
   /* Add edge for src->dest */
-  newVertex = vertex_init(dest);
+  newVertex = vertex_init(dest, weight);
   if (newVertex == NULL)
   {
     printf("Error: Could not allocate memory for new vertex\n");
@@ -81,7 +82,7 @@ int graph_add_edge(Graph* graph, int src, int dest)
   }
 
   /* Add edge for dest->src */
-  newVertex = vertex_init(src);
+  newVertex = vertex_init(src, weight);
   if (newVertex == NULL) {
     printf("Error: Could not allocate memory for new vertex\n");
     return -1;
@@ -114,7 +115,7 @@ int graph_remove_edge(Graph* graph, int src, int dest)
 
   /* Remove edge for src->dest */
   Vertex* temp = graph->vertices[src];
-  while (temp != NULL && temp->id != dest) {
+  while (temp != NULL && temp->edge.dest != dest) {
     temp = temp->next;
   }
   if (temp == NULL) {
@@ -135,7 +136,7 @@ int graph_remove_edge(Graph* graph, int src, int dest)
 
   /* Remove edge for dest->src */
   temp = graph->vertices[dest];
-  while (temp != NULL && temp->id != src) {
+  while (temp != NULL && temp->edge.dest != src) {
     temp = temp->next;
   }
   if (temp == NULL) {
@@ -166,7 +167,7 @@ void graph_print(Graph* graph)
     printf("Vertex %d:", i);
     Vertex* temp = graph->vertices[i];
     while (temp != NULL) {
-      printf(" -> %d", temp->id);
+      printf(" -> (%d:%d)", temp->edge.dest, temp->edge.weight);
       temp = temp->next;
     }
     printf("\n");
@@ -238,10 +239,10 @@ int graph_DFS (Graph* graph, int start_vertex)
       /* Push unvisited adjacencies into the stack */
       while (temp)
       {
-        if (visited_vertices[temp->id] == 0)
+        if (visited_vertices[temp->edge.dest] == 0)
         {
-          visited_vertices[temp->id] = 1;
-          stack_push (stack, &temp->id);
+          visited_vertices[temp->edge.dest] = 1;
+          stack_push (stack, &temp->edge.dest);
         }
         temp = temp->next;
       }
@@ -296,10 +297,10 @@ int graph_BFS (Graph* graph, int start_vertex)
       /* Push unvisited adjacencies into the stack */
       while (temp)
       {
-        if (visited_vertices[temp->id] == 0)
+        if (visited_vertices[temp->edge.dest] == 0)
         {
-          visited_vertices[temp->id] = 1;
-          queue_enqueue (queue, &temp->id);
+          visited_vertices[temp->edge.dest] = 1;
+          queue_enqueue (queue, &temp->edge.dest);
         }
         temp = temp->next;
       }
@@ -325,20 +326,19 @@ int main (int argc, char** argv)
     printf("Error: Could not initialize graph\n");
     return -1;
   }
-  graph_add_edge(graph, 0, 1);
-  graph_add_edge(graph, 0, 4);
-  graph_add_edge(graph, 1, 2);
-  graph_add_edge(graph, 1, 3);
-  graph_add_edge(graph, 1, 4);
-  graph_add_edge(graph, 2, 3);
-  graph_add_edge(graph, 3, 4);
+  graph_add_edge(graph, 0, 1, 5);
+  graph_add_edge(graph, 0, 4, 7);
+  graph_add_edge(graph, 1, 2, 1);
+  graph_add_edge(graph, 1, 3, 4);
+  graph_add_edge(graph, 1, 4, 1);
+  graph_add_edge(graph, 2, 3, 4);
+  graph_add_edge(graph, 3, 4, 3);
 
   graph_print(graph);
   graph_DFS (graph, 3);
 
   graph_remove_edge(graph, 1, 4);
   printf("After removing edge 1-4:\n");
-  // graph_print(graph);
   graph_BFS (graph, 2);
 
   return 0;

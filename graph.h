@@ -3,7 +3,11 @@
 
 typedef struct Vertex
 {
-  int id;
+  struct Edge
+  {
+    int dest;
+    int weight;
+  } edge;
   struct Vertex* next;
   struct Vertex* prev;
 } Vertex;
