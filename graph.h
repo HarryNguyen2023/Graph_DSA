@@ -1,13 +1,15 @@
 #ifndef __GRAPH_H__
 #define __GRAPH_H__
 
+typedef struct Edge
+{
+  int dest;
+  int weight;
+} Edge;
+
 typedef struct Vertex
 {
-  struct Edge
-  {
-    int dest;
-    int weight;
-  } edge;
+  Edge edge;
   struct Vertex* next;
   struct Vertex* prev;
 } Vertex;

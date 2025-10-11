@@ -5,6 +5,7 @@
 #include "graph.h"
 #include "stack.h"
 #include "queue.h"
+#include "priority_queue.h"
 
 #define MAX_VERTICES 100
 
@@ -313,10 +314,47 @@ int graph_BFS (Graph* graph, int start_vertex)
   return 0;
 }
 
+int edge_cmp (void *e1, void *e2)
+{
+  struct Edge *edge1 = (struct Edge *)e1;
+  struct Edge *edge2 = (struct Edge *)e2;
+
+  if (!edge1 && !edge2)
+    return 0;
+
+  if (!edge1 || !edge2)
+    return -1;
+
+  if (edge1->weight > edge2->weight)
+    return 1;
+  else if (edge1->weight < edge2->weight)
+    return -1;
+  else
+  {
+    if (edge1->dest > edge2->dest)
+      return 1;
+    else if (edge1->dest < edge2->dest)
+      return -1;
+  }
+
+  return 0;
+}
+
+int edge_dump (void *e)
+{
+  struct Edge *edge = (struct Edge *)e;
+  if (! edge)
+    return -1;
+
+  printf ("(d:%d,w:%d)", edge->dest, edge->weight);
+}
+
 int main (int argc, char** argv) 
 {
   Graph* graph = NULL;
+  PriorityQueue *pq = NULL;
   int numVertices = 0;
+  Edge *edge = NULL;
 
   printf ("Enter the number of vertices: ");
   scanf ("%d", &numVertices);
@@ -337,9 +375,26 @@ int main (int argc, char** argv)
   graph_print(graph);
   graph_DFS (graph, 3);
 
-  graph_remove_edge(graph, 1, 4);
+  // graph_remove_edge(graph, 1, 4);
   printf("After removing edge 1-4:\n");
   graph_BFS (graph, 2);
+
+  pq = pq_create (numVertices);
+  pq->pq_cmp = edge_cmp;
+  pq->pq_node_dump = edge_dump;
+  Vertex *temp = graph->vertices[1];
+  while (temp)
+  {
+    pq_add (pq, (void *)&temp->edge);
+    temp = temp->next;
+  }
+
+  pq_print (pq);
+  edge = pq_extract_top (pq);
+  if (edge)
+    printf ("Edge: (d:%d,w:%d)\n", edge->dest, edge->weight);
+  pq_print (pq);
+  pq_deinit (pq);
 
   return 0;
 }
