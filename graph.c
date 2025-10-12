@@ -420,6 +420,7 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
   {
     printf ("[%s,%d] Fail to create priority queue!\n",
             __func__, __LINE__);
+    return -1;
   }
 
   path = (PathNode *)calloc(graph->numVertices, sizeof(PathNode));
@@ -436,18 +437,33 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
       distance[i]     = INFINITY;
       prev_node[i]    = UNKNOW_VETEX;
     }
-    else
+  }
+  distance[src] = 0;
+  prev_node[src] = UNKNOW_VETEX;
+
+  /* Update distance for src's neighbors */
+  temp = graph->vertices[src];
+  while (temp)
+  {
+    distance[temp->edge.dest]   = temp->edge.weight;
+    prev_node[temp->edge.dest]  = src;
+
+    temp = temp->next;
+  }
+
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    if (i != src)
     {
-      distance[i]     = 0;
-      prev_node[i]    = src;
+      path[i].dist    = &distance[i];
+      path[i].V       = graph->vertices[i];
+      pq_add (pq, &path[i]);
     }
-    path[i].dist = &distance[i];
-    path[i].V    = graph->vertices[i];
-    pq_add (pq, &path[i]);
   }
 
   while (! pq_is_empty (pq))
   {
+    /* Get the vertex with closest distance to src */
     min = ((PathNode *)pq_extract_top(pq))->V;
     while (min)
     {
@@ -461,6 +477,7 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
     }
   }
 
+  free (path);
   pq_deinit (pq);
 
   return 0;
@@ -478,6 +495,7 @@ int graph_dijkstra (Graph *graph, int src)
   {
     printf ("[%s,%d] Fail to allocated memory for distance array!\n",
             __func__, __LINE__);
+    return -1;
   }
 
   prev_node = (int *)malloc(graph->numVertices * sizeof (int));
@@ -485,9 +503,123 @@ int graph_dijkstra (Graph *graph, int src)
   {
     printf ("[%s,%d] Fail to allocated memory for distance array!\n",
             __func__, __LINE__);
+    return -1;
   }
 
   rv = dijkstra (graph, src, distance, prev_node, graph_path_node_cmp, graph_path_node_dump);
+  if (rv != 0)
+    return rv;
+
+  for (i = 0; i < graph->numVertices; i++)
+  {
+    if (i != src)
+    {
+      printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
+      graph_print_prev_node (prev_node, src, i, graph->numVertices);
+    }
+  }
+
+  free (distance);
+  free (prev_node);
+
+  return 0;
+}
+
+int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
+{
+  int i, temp_dist;
+  Vertex *temp = NULL;
+
+  if (!graph || !graph->vertices || !graph->numVertices
+      || !distance || !prev_node)
+    return -1;
+
+  if (src >= graph->numVertices)
+  {
+    printf ("Error: src % larger then number of vertices %d\n",
+            src, graph->numVertices);
+    return -1;
+  }
+
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    if (i != src)
+    {
+      distance[i]     = INFINITY;
+      prev_node[i]    = UNKNOW_VETEX;
+    }
+  }
+  distance[src]   = 0;
+  prev_node[src]  = UNKNOW_VETEX;
+
+  /* Update distance for src's neighbors */
+  temp = graph->vertices[src];
+  while (temp)
+  {
+    distance[temp->edge.dest]   = temp->edge.weight;
+    prev_node[temp->edge.dest]  = src;
+
+    temp = temp->next;
+  }
+
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    temp = graph->vertices[i];
+    while (temp)
+    {
+      temp_dist = distance[temp->id] + temp->edge.weight;
+      if (temp_dist < distance[temp->edge.dest])
+      {
+        distance[temp->edge.dest]  = temp_dist;
+        prev_node[temp->edge.dest] = temp->id;
+      }
+      temp = temp->next;
+    }
+  }
+
+  /* Detect negative weight cycle */
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    temp = graph->vertices[i];
+    while (temp)
+    {
+      temp_dist = distance[temp->id] + temp->edge.weight;
+      if (temp_dist < distance[temp->edge.dest])
+      {
+        printf ("[%s,%d] Error: Detected negative weight cycles!\n", __func__, __LINE__);
+        return -1;
+      }
+      temp = temp->next;
+    }
+  }
+
+  return 0;
+}
+
+int graph_bellman_ford (Graph *graph, int src)
+{
+  int *distance, *prev_node, rv, i;
+
+  if (!graph || !graph->vertices || !graph->numVertices)
+    return -1;
+
+  distance = (int *)malloc(graph->numVertices * sizeof (int));
+  if (!distance)
+  {
+    printf ("[%s,%d] Fail to allocated memory for distance array!\n",
+            __func__, __LINE__);
+    return -1;
+  }
+
+  prev_node = (int *)malloc(graph->numVertices * sizeof (int));
+  if (!prev_node)
+  {
+    printf ("[%s,%d] Fail to allocated memory for distance array!\n",
+            __func__, __LINE__);
+    return -1;
+  }
+
+  rv = bellman_ford (graph, src, distance, prev_node);
   if (rv != 0)
     return rv;
 
@@ -532,7 +664,11 @@ int main (int argc, char** argv)
   graph_print(graph);
   graph_DFS (graph, 3);
 
-  graph_dijkstra (graph, 3);
+  printf ("\nDijkstra's Algorithm: \n");
+  graph_dijkstra (graph, 2);
+
+  printf ("\nBellman-Ford Algorithm: \n");
+  graph_bellman_ford (graph, 2);
 
   return 0;
 }
