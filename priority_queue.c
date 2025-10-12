@@ -4,27 +4,25 @@
 #include <stdbool.h>
 #include "priority_queue.h"
 
-PQNode* pq_create_node(void* data)
-{
-  PQNode *node = (PQNode *)malloc(sizeof (PQNode));
-  node->data = data;
-  return node;
-}
-
-PriorityQueue* pq_create(int capacity)
+PriorityQueue* pq_create(int capacity,
+                         int (*pq_cmp)(void *, void *),
+                         int (*pq_node_dump)(void *))
 {
   PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
   if (!pq)
     return NULL;
 
   pq->nodes = (PQNode*)malloc(capacity * sizeof(PQNode));
-  if (! pq->nodes) {
+  if (! pq->nodes)
+  {
     free(pq);
     return NULL;
   }
 
-  pq->capacity = capacity;
-  pq->size = 0;
+  pq->capacity      = capacity;
+  pq->size          = 0;
+  pq->pq_cmp        = pq_cmp;
+  pq->pq_node_dump  = pq_node_dump;
   return pq;
 }
 
@@ -68,10 +66,10 @@ int pq_heapify_util (PriorityQueue *pq, int i)
   left_child = 2*i + 1;
   right_child = 2*i + 2;
 
-  if (left_child < pq->size
+  if (left_child < pq->size && (pq->pq_cmp)
       && (*pq->pq_cmp)(pq->nodes[left_child].data, pq->nodes[smallest].data) < 0)
     smallest = left_child;
-  if (right_child < pq->size
+  if (right_child < pq->size && (pq->pq_cmp)
       && (*pq->pq_cmp)(pq->nodes[right_child].data, pq->nodes[smallest].data) < 0)
     smallest = right_child;
 
@@ -99,7 +97,8 @@ PQNode *pq_find_node (PriorityQueue *pq, void *data)
 
   for (i = 0; i < pq->size; ++i)
   {
-    if ((*pq->pq_cmp)(pq->nodes[i].data, data) == 0)
+    if ((pq->pq_cmp)
+        && (*pq->pq_cmp)(pq->nodes[i].data, data) == 0)
     {
       found = true;
       break;
@@ -122,25 +121,24 @@ void pq_print (PriorityQueue *pq)
   printf ("Priority Queue:\n");
   for (i = 0; i < pq->size; ++i)
   {
-    (*pq->pq_node_dump)(pq->nodes[i].data);
+    if (pq->pq_node_dump)
+      (*pq->pq_node_dump)(pq->nodes[i].data);
     printf ("\n");
   }
 }
 
-int pq_add_node (PriorityQueue *pq, PQNode *pq_node)
+int pq_add_node (PriorityQueue *pq, void *data)
 {
-  if (!pq || !pq->nodes || !pq_node
+  if (!pq || !pq->nodes
       || pq->size == pq->capacity)
     return -1;
 
-  pq->nodes[pq->size++] = *pq_node;
+  pq->nodes[pq->size++].data = data;
   pq_heapify (pq);
 }
 
 int pq_add (PriorityQueue *pq, void *data)
 {
-  PQNode *new_node = NULL;
-
   if (!pq || !pq->nodes || !data
       || pq->size == pq->capacity)
     return -1;
@@ -148,14 +146,7 @@ int pq_add (PriorityQueue *pq, void *data)
   if (pq_find_node (pq, data) != NULL)
     return 1;
 
-  new_node = pq_create_node (data);
-  if (! new_node)
-  {
-    printf ("Error: Fail to allocate memory for new PQNode\n");
-    return -1;
-  }
-
-  pq_add_node (pq, new_node);
+  pq_add_node (pq, data);
 }
 
 int pq_delete_node (PriorityQueue *pq, PQNode *pq_node)
@@ -200,7 +191,7 @@ void* pq_extract_top (PriorityQueue *pq)
   int rv = 0;
   void *data = NULL;
 
-  if (!pq || !pq->nodes|| !pq->size)
+  if (!pq || !pq->nodes || !pq->size)
     return NULL;
 
   data = (&(pq->nodes[0]))->data;
@@ -212,4 +203,12 @@ void* pq_extract_top (PriorityQueue *pq)
   }
 
   return data;
+}
+
+int pq_is_empty (PriorityQueue *pq)
+{
+  if (!pq || !pq->nodes)
+    return -1;
+
+  return (pq->size == 0);
 }

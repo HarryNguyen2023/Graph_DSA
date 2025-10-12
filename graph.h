@@ -9,10 +9,17 @@ typedef struct Edge
 
 typedef struct Vertex
 {
+  int id;
   Edge edge;
   struct Vertex* next;
   struct Vertex* prev;
 } Vertex;
+
+typedef struct PathNode
+{
+  Vertex* V;
+  int* dist;
+} PathNode;
 
 typedef struct Graph
 {

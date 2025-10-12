@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include "graph.h"
 #include "stack.h"
@@ -8,10 +9,13 @@
 #include "priority_queue.h"
 
 #define MAX_VERTICES 100
+#define INFINITY     10000
+#define UNKNOW_VETEX -1
 
-Vertex *vertex_init (int dest, int weight)
+Vertex *vertex_init (int id, int dest, int weight)
 {
   Vertex* newVertex = (Vertex*)malloc(sizeof(Vertex));
+  newVertex->id           = id;
   newVertex->edge.dest    = dest;
   newVertex->edge.weight  = weight;
   newVertex->next         = NULL;
@@ -63,7 +67,7 @@ int graph_add_edge(Graph* graph, int src, int dest, int weight)
   }
 
   /* Add edge for src->dest */
-  newVertex = vertex_init(dest, weight);
+  newVertex = vertex_init(src, dest, weight);
   if (newVertex == NULL)
   {
     printf("Error: Could not allocate memory for new vertex\n");
@@ -83,7 +87,7 @@ int graph_add_edge(Graph* graph, int src, int dest, int weight)
   }
 
   /* Add edge for dest->src */
-  newVertex = vertex_init(src, weight);
+  newVertex = vertex_init(dest, src, weight);
   if (newVertex == NULL) {
     printf("Error: Could not allocate memory for new vertex\n");
     return -1;
@@ -116,7 +120,9 @@ int graph_remove_edge(Graph* graph, int src, int dest)
 
   /* Remove edge for src->dest */
   Vertex* temp = graph->vertices[src];
-  while (temp != NULL && temp->edge.dest != dest) {
+  while (temp != NULL
+        && temp->id != src
+        && temp->edge.dest != dest) {
     temp = temp->next;
   }
   if (temp == NULL) {
@@ -137,7 +143,9 @@ int graph_remove_edge(Graph* graph, int src, int dest)
 
   /* Remove edge for dest->src */
   temp = graph->vertices[dest];
-  while (temp != NULL && temp->edge.dest != src) {
+  while (temp != NULL
+        && temp->id != dest
+        && temp->edge.dest != src) {
     temp = temp->next;
   }
   if (temp == NULL) {
@@ -165,8 +173,8 @@ void graph_print(Graph* graph)
   }
 
   for (int i = 0; i < graph->numVertices; i++) {
-    printf("Vertex %d:", i);
     Vertex* temp = graph->vertices[i];
+    printf("Vertex %d:", temp->id);
     while (temp != NULL) {
       printf(" -> (%d:%d)", temp->edge.dest, temp->edge.weight);
       temp = temp->next;
@@ -314,39 +322,188 @@ int graph_BFS (Graph* graph, int start_vertex)
   return 0;
 }
 
-int edge_cmp (void *e1, void *e2)
+int graph_path_node_cmp (void *p1, void *p2)
 {
-  struct Edge *edge1 = (struct Edge *)e1;
-  struct Edge *edge2 = (struct Edge *)e2;
+  PathNode *path1 = (PathNode *)p1;
+  PathNode *path2 = (PathNode *)p2;
 
-  if (!edge1 && !edge2)
+  if (!path1 && !path2)
     return 0;
 
-  if (!edge1 || !edge2)
+  if (!path1 || !path2)
     return -1;
 
-  if (edge1->weight > edge2->weight)
+  if (*(path1->dist) > *(path2->dist))
     return 1;
-  else if (edge1->weight < edge2->weight)
+  else if (*(path1->dist) < *(path2->dist))
     return -1;
   else
   {
-    if (edge1->dest > edge2->dest)
+    if (path1->V->edge.weight > path2->V->edge.weight)
       return 1;
-    else if (edge1->dest < edge2->dest)
+    else if (path1->V->edge.weight < path2->V->edge.weight)
       return -1;
+    else
+    {
+      if (path1->V->edge.dest > path2->V->edge.dest)
+        return 1;
+      else if (path1->V->edge.dest < path2->V->edge.dest)
+        return -1;
+      else
+        return 0;
+    }
   }
 
   return 0;
 }
 
-int edge_dump (void *e)
+int graph_path_node_dump (void *p)
 {
-  struct Edge *edge = (struct Edge *)e;
-  if (! edge)
+  PathNode *path = (PathNode *)p;
+  if (! path)
     return -1;
 
-  printf ("(d:%d,w:%d)", edge->dest, edge->weight);
+  printf ("(s:%d,d:%d,w:%d)", path->V->id, path->V->edge.dest, path->V->edge.weight);
+}
+
+int graph_print_prev_node (int *prev_node, int src, int dest, int size)
+{
+  int prev;
+  Stack stack = {0};
+
+  if (!prev_node || !size || dest >= size)
+    return -1;
+
+  prev = prev_node[dest];
+  while (prev != src && prev < size)
+  {
+    if (prev != UNKNOW_VETEX)
+      stack_push (&stack, (void *)&prev);
+    prev = prev_node[prev];
+  }
+
+  printf ("Path from %d to %d: ", src, dest);
+  while (! stack_is_empty(&stack))
+  {
+    int* temp = stack_pop (&stack);
+    if (temp)
+    {
+      printf ("%d ", *temp);
+    }
+  }
+  printf("\n");
+
+  return 0;
+}
+
+int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
+              int (*pq_cmp)(void *, void *), int (*pq_node_dump)(void *))
+{
+  int i, temp_dist;
+  PriorityQueue *pq = NULL;
+  Vertex *min = NULL, *temp;
+  PathNode *path = NULL;
+
+  if (!graph || !graph->vertices || !graph->numVertices
+      || !distance || !prev_node)
+    return -1;
+
+  if (src >= graph->numVertices)
+  {
+    printf ("Error: src % larger then number of vertices %d\n",
+            src, graph->numVertices);
+    return -1;
+  }
+
+  pq = pq_create (graph->numVertices, pq_cmp, pq_node_dump);
+  if (! pq)
+  {
+    printf ("[%s,%d] Fail to create priority queue!\n",
+            __func__, __LINE__);
+  }
+
+  path = (PathNode *)calloc(graph->numVertices, sizeof(PathNode));
+  if (! path)
+  {
+    printf ("[%s,%d] Error: Can not allocate memory for path!\n", __func__, __LINE__);
+    return -1;
+  }
+
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    if (i != src)
+    {
+      distance[i]     = INFINITY;
+      prev_node[i]    = UNKNOW_VETEX;
+    }
+    else
+    {
+      distance[i]     = 0;
+      prev_node[i]    = src;
+    }
+    path[i].dist = &distance[i];
+    path[i].V    = graph->vertices[i];
+    pq_add (pq, &path[i]);
+  }
+
+  while (! pq_is_empty (pq))
+  {
+    min = ((PathNode *)pq_extract_top(pq))->V;
+    while (min)
+    {
+      temp_dist = distance[min->id] + min->edge.weight;
+      if (temp_dist < distance[min->edge.dest])
+      {
+        distance[min->edge.dest]  = temp_dist;
+        prev_node[min->edge.dest] = min->id;
+      }
+      min = min->next;
+    }
+  }
+
+  pq_deinit (pq);
+
+  return 0;
+}
+
+int graph_dijkstra (Graph *graph, int src)
+{
+  int *distance, *prev_node, rv, i;
+
+  if (!graph || !graph->vertices || !graph->numVertices)
+    return -1;
+
+  distance = (int *)malloc(graph->numVertices * sizeof (int));
+  if (!distance)
+  {
+    printf ("[%s,%d] Fail to allocated memory for distance array!\n",
+            __func__, __LINE__);
+  }
+
+  prev_node = (int *)malloc(graph->numVertices * sizeof (int));
+  if (!prev_node)
+  {
+    printf ("[%s,%d] Fail to allocated memory for distance array!\n",
+            __func__, __LINE__);
+  }
+
+  rv = dijkstra (graph, src, distance, prev_node, graph_path_node_cmp, graph_path_node_dump);
+  if (rv != 0)
+    return rv;
+
+  for (i = 0; i < graph->numVertices; i++)
+  {
+    if (i != src)
+    {
+      printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
+      graph_print_prev_node (prev_node, src, i, graph->numVertices);
+    }
+  }
+
+  free (distance);
+  free (prev_node);
+
+  return 0;
 }
 
 int main (int argc, char** argv) 
@@ -375,26 +532,7 @@ int main (int argc, char** argv)
   graph_print(graph);
   graph_DFS (graph, 3);
 
-  // graph_remove_edge(graph, 1, 4);
-  printf("After removing edge 1-4:\n");
-  graph_BFS (graph, 2);
-
-  pq = pq_create (numVertices);
-  pq->pq_cmp = edge_cmp;
-  pq->pq_node_dump = edge_dump;
-  Vertex *temp = graph->vertices[1];
-  while (temp)
-  {
-    pq_add (pq, (void *)&temp->edge);
-    temp = temp->next;
-  }
-
-  pq_print (pq);
-  edge = pq_extract_top (pq);
-  if (edge)
-    printf ("Edge: (d:%d,w:%d)\n", edge->dest, edge->weight);
-  pq_print (pq);
-  pq_deinit (pq);
+  graph_dijkstra (graph, 3);
 
   return 0;
 }
