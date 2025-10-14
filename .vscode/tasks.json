@@ -7,10 +7,10 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "-I", "${workspaceFolder}",
-                "*.c",
+                "-I", "${workspaceFolder}\\lib",
+                "*.c", "${workspaceFolder}\\lib\\*.c",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}\\build\\${fileBasenameNoExtension}.exe"
             ],
             "options": {
                 "cwd": "${fileDirname}"
