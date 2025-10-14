@@ -67,7 +67,7 @@ int queue_enqueue (Queue* queue, void *data)
   newNode->next = NULL;
   newNode->prev = NULL;
 
-  if (queue->rear == NULL) // Queue is empty
+  if (queue->rear == NULL)
   {
     queue->front = newNode;
     queue->rear = newNode;
@@ -89,7 +89,7 @@ int queue_dequeue (Queue* queue, void **data)
     printf("[%s,%d] Error: Queue is NULL\n", __func__, __LINE__);
     return -1;
   }
-  if (queue->front == NULL) // Queue is empty
+  if (queue->front == NULL)
   {
     printf("Error: Queue is empty, cannot dequeue\n");
     return -1;
@@ -101,7 +101,7 @@ int queue_dequeue (Queue* queue, void **data)
   if (queue->front != NULL)
     queue->front->prev = NULL;
   else
-    queue->rear = NULL; // Queue is now empty
+    queue->rear = NULL;
 
   free(temp);
   queue->size--;
