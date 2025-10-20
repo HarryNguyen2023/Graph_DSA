@@ -91,6 +91,7 @@ int main (int argc, char** argv)
   graph_add_edge(graph, 2, 3, 4);
   graph_add_edge(graph, 3, 4, 3);
 
+  graph_DFS (graph, 3);
   graph_print(graph);
   graph_BFS (graph, 3);
 

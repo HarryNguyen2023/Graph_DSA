@@ -52,15 +52,56 @@ Graph* graph_init(int numVertices)
   return graph;
 }
 
+int graph_get_vertex_by_id (Graph* graph, int id)
+{
+  int i = 0;
+
+  if (! graph)
+    return UNKNOW_VETEX;
+
+  for (i = 0; i < graph->numVertices; i++)
+  {
+    if (graph->vertices[i]
+        && graph->vertices[i]->id == id)
+      break;
+  }
+
+  if (i == graph->numVertices)
+    return UNKNOW_VETEX;
+
+  return i;
+}
+
+int graph_get_empty_vertex (Graph* graph)
+{
+  int i = 0;
+
+  if (! graph)
+    return UNKNOW_VETEX;
+
+  for (i = 0; i < graph->numVertices; i++)
+  {
+    if (graph->vertices[i] == NULL)
+      break;
+  }
+
+  if (i == graph->numVertices)
+  {
+    printf ("[%s,%d] Graph is already full\n", __func__, __LINE__);
+    return UNKNOW_VETEX;
+  }
+
+  return i;
+}
+
 int graph_add_edge(Graph* graph, int src, int dest, int weight)
 {
   Vertex* newVertex = NULL;
+  int i = 0;
 
-  if (src >= graph->numVertices 
-      || dest >= graph->numVertices
-      || src < 0
+  if (src < 0
       || dest < 0
-      || src == dest) 
+      || src == dest)
   {
     printf("Error: Vertex index out of bounds\n");
     return -1;
@@ -74,11 +115,20 @@ int graph_add_edge(Graph* graph, int src, int dest, int weight)
     return -1;
   }
 
-  if (graph->vertices[src] == NULL)
-    graph->vertices[src] = newVertex;
+  /* Get location for vertex */
+  i = graph_get_vertex_by_id (graph, src);
+  if (i == UNKNOW_VETEX)
+  {
+    i = graph_get_empty_vertex (graph);
+    if (i == UNKNOW_VETEX)
+      return -1;
+  }
+
+  if (graph->vertices[i] == NULL)
+    graph->vertices[i] = newVertex;
   else
   {
-    Vertex* temp = graph->vertices[src];
+    Vertex* temp = graph->vertices[i];
     while (temp->next != NULL) {
       temp = temp->next;
     }
@@ -93,11 +143,20 @@ int graph_add_edge(Graph* graph, int src, int dest, int weight)
     return -1;
   }
 
-  if (graph->vertices[dest] == NULL)
-    graph->vertices[dest] = newVertex;
+  /* Get location for vertex */
+  i = graph_get_vertex_by_id (graph, dest);
+  if (i == UNKNOW_VETEX)
+  {
+    i = graph_get_empty_vertex (graph);
+    if (i == UNKNOW_VETEX)
+      return -1;
+  }
+
+  if (graph->vertices[i] == NULL)
+    graph->vertices[i] = newVertex;
   else
   {
-    Vertex* temp = graph->vertices[dest];
+    Vertex* temp = graph->vertices[i];
     while (temp->next != NULL) {
       temp = temp->next;
     }
@@ -108,9 +167,9 @@ int graph_add_edge(Graph* graph, int src, int dest, int weight)
 
 int graph_remove_edge(Graph* graph, int src, int dest) 
 {
-  if (src >= graph->numVertices 
-      || dest >= graph->numVertices
-      || src < 0
+  int i = 0;
+
+  if (src < 0
       || dest < 0
       || src == dest) 
   {
@@ -119,7 +178,15 @@ int graph_remove_edge(Graph* graph, int src, int dest)
   }
 
   /* Remove edge for src->dest */
-  Vertex* temp = graph->vertices[src];
+  i = graph_get_vertex_by_id (graph, src);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Error: There is no edge with src %d in graph\n",
+           __func__, __LINE__, src);
+    return -1;
+  }
+
+  Vertex* temp = graph->vertices[i];
   while (temp != NULL
         && temp->id != src
         && temp->edge.dest != dest) {
@@ -133,7 +200,7 @@ int graph_remove_edge(Graph* graph, int src, int dest)
   if (temp->prev != NULL)
     temp->prev->next = temp->next;
   else
-    graph->vertices[src] = temp->next;
+    graph->vertices[i] = temp->next;
 
   if (temp->next != NULL)
     temp->next->prev = temp->prev;
@@ -142,7 +209,15 @@ int graph_remove_edge(Graph* graph, int src, int dest)
   temp = NULL;
 
   /* Remove edge for dest->src */
-  temp = graph->vertices[dest];
+  i = graph_get_vertex_by_id (graph, dest);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Error: There is no edge with src %d in graph\n",
+           __func__, __LINE__, dest);
+    return -1;
+  }
+
+  temp = graph->vertices[i];
   while (temp != NULL
         && temp->id != dest
         && temp->edge.dest != src) {
@@ -156,7 +231,7 @@ int graph_remove_edge(Graph* graph, int src, int dest)
   if (temp->prev != NULL)
     temp->prev->next = temp->next;
   else
-    graph->vertices[dest] = temp->next;
+    graph->vertices[i] = temp->next;
 
   if (temp->next != NULL)
     temp->next->prev = temp->prev;
@@ -197,11 +272,16 @@ void graph_deinit (Graph* graph)
     Vertex* next = NULL;
     while (current != NULL) {
       next = current->next;
-      free(current);
+      if (current)
+        free(current);
       current = next;
     }
   }
-  free(graph->vertices);
+
+  if (graph->vertices)
+    free(graph->vertices);
+  graph->vertices = NULL;
+
   free(graph);
   graph = NULL;
 }
@@ -210,7 +290,7 @@ int graph_DFS (Graph* graph, int start_vertex)
 {
   int *visited_vertices = NULL;
   Stack *stack = NULL;
-  int* top;
+  int *top, i;
 
   if (! graph)
   {
@@ -245,7 +325,11 @@ int graph_DFS (Graph* graph, int start_vertex)
     if (top)
     {
       printf (" -> %d", *top);
-      Vertex *temp = graph->vertices[*top];
+      i = graph_get_vertex_by_id (graph, *top);
+      if (i == UNKNOW_VETEX)
+        goto EXIT;
+
+      Vertex *temp = graph->vertices[i];
       /* Push unvisited adjacencies into the stack */
       while (temp)
       {
@@ -258,10 +342,13 @@ int graph_DFS (Graph* graph, int start_vertex)
       }
     }
   }
+
+EXIT:
   printf ("\n");
 
   /* Clean up */
   stack_delete (stack);
+  free (visited_vertices);
   return 0;
 }
 
@@ -269,7 +356,7 @@ int graph_BFS (Graph* graph, int start_vertex)
 {
   int *visited_vertices = NULL;
   Queue *queue = NULL;
-  int* front;
+  int *front, i;
 
   if (! graph)
   {
@@ -303,7 +390,11 @@ int graph_BFS (Graph* graph, int start_vertex)
     if (front)
     {
       printf (" -> %d", *front);
-      Vertex *temp = graph->vertices[*front];
+      i = graph_get_vertex_by_id (graph, *front);
+      if (i == UNKNOW_VETEX)
+        goto EXIT;
+
+      Vertex *temp = graph->vertices[i];
       /* Push unvisited adjacencies into the stack */
       while (temp)
       {
@@ -316,10 +407,13 @@ int graph_BFS (Graph* graph, int start_vertex)
       }
     }
   }
+
+EXIT:
   printf ("\n");
 
   /* Clean up */
   queue_delete (queue);
+  free (visited_vertices);
   return 0;
 }
 
@@ -367,20 +461,28 @@ int graph_path_node_dump (void *p)
   printf ("(s:%d,d:%d,w:%d)", path->V->id, path->V->edge.dest, path->V->edge.weight);
 }
 
-int graph_print_prev_node (int *prev_node, int src, int dest, int size)
+int graph_print_prev_node (Graph *graph, int *prev_node, int src, int dest, int size)
 {
-  int prev;
+  int prev, i;
   Stack stack = {0};
 
   if (!prev_node || !size || dest >= size)
     return -1;
 
-  prev = prev_node[dest];
+  i = graph_get_vertex_by_id (graph, dest);
+  if (i == UNKNOW_VETEX)
+    return 0;
+
+  prev = prev_node[i];
   while (prev != src && prev < size)
   {
     if (prev != UNKNOW_VETEX)
       stack_push (&stack, (void *)&prev);
-    prev = prev_node[prev];
+
+    i = graph_get_vertex_by_id (graph, prev);
+    if (i == UNKNOW_VETEX)
+      break;
+    prev = prev_node[i];
   }
 
   printf ("Path from %d to %d: ", src, dest);
@@ -400,7 +502,7 @@ int graph_print_prev_node (int *prev_node, int src, int dest, int size)
 int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
               int (*pq_cmp)(void *, void *), int (*pq_node_dump)(void *))
 {
-  int i, temp_dist;
+  int i, i_dest, temp_dist;
   PriorityQueue *pq = NULL;
   Vertex *min = NULL, *temp;
   PathNode *path = NULL;
@@ -408,13 +510,6 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
   if (!graph || !graph->vertices || !graph->numVertices
       || !distance || !prev_node)
     return -1;
-
-  if (src >= graph->numVertices)
-  {
-    printf ("Error: src % larger then number of vertices %d\n",
-            src, graph->numVertices);
-    return -1;
-  }
 
   pq = pq_create (graph->numVertices, pq_cmp, pq_node_dump);
   if (! pq)
@@ -433,28 +528,41 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
 
   for (i = 0; i < graph->numVertices; ++i)
   {
-    if (i != src)
-    {
+    if (graph->vertices[i]
+        && graph->vertices[i]->id != src)
       distance[i]     = INFINITY;
-      prev_node[i]    = UNKNOW_VETEX;
-    }
+    else
+      distance[i]     = 0;
+
+    prev_node[i]    = UNKNOW_VETEX;
   }
-  distance[src] = 0;
-  prev_node[src] = UNKNOW_VETEX;
 
   /* Update distance for src's neighbors */
-  temp = graph->vertices[src];
+  i = graph_get_vertex_by_id (graph, src);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Error: There is no edge with src %d in graph\n",
+           __func__, __LINE__, src);
+    goto EXIT;
+  }
+
+  temp = graph->vertices[i];
   while (temp)
   {
-    distance[temp->edge.dest]   = temp->edge.weight;
-    prev_node[temp->edge.dest]  = src;
+    i = graph_get_vertex_by_id (graph, temp->edge.dest);
+    if (i != UNKNOW_VETEX)
+    {
+      distance[i]   = temp->edge.weight;
+      prev_node[i]  = graph_get_vertex_by_id (graph, src);
+    }
 
     temp = temp->next;
   }
 
   for (i = 0; i < graph->numVertices; ++i)
   {
-    if (i != src)
+    if (graph->vertices[i]
+        && graph->vertices[i]->id != src)
     {
       path[i].dist    = &distance[i];
       path[i].V       = graph->vertices[i];
@@ -468,16 +576,25 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
     min = ((PathNode *)pq_extract_top(pq))->V;
     while (min)
     {
-      temp_dist = distance[min->id] + min->edge.weight;
-      if (temp_dist < distance[min->edge.dest])
+      i = graph_get_vertex_by_id (graph, min->id);
+      if (i == UNKNOW_VETEX)
+        continue;
+
+      i_dest = graph_get_vertex_by_id (graph, min->edge.dest);
+      if (i_dest == UNKNOW_VETEX)
+        continue;
+
+      temp_dist = distance[i] + min->edge.weight;
+      if (temp_dist < distance[i_dest])
       {
-        distance[min->edge.dest]  = temp_dist;
-        prev_node[min->edge.dest] = min->id;
+        distance[i_dest]  = temp_dist;
+        prev_node[i_dest] = min->id;
       }
       min = min->next;
     }
   }
 
+EXIT:
   free (path);
   pq_deinit (pq);
 
@@ -513,10 +630,11 @@ int graph_dijkstra (Graph *graph, int src)
 
   for (i = 0; i < graph->numVertices; i++)
   {
-    if (i != src)
+    if (i != src
+        && graph->vertices[i])
     {
-      printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
-      graph_print_prev_node (prev_node, src, i, graph->numVertices);
+      printf ("Distance from %d to %d: %d\n", src, graph->vertices[i]->id, distance[i]);
+      // graph_print_prev_node (graph, prev_node, src, i, graph->numVertices);
     }
   }
 
@@ -528,7 +646,7 @@ int graph_dijkstra (Graph *graph, int src)
 
 int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
 {
-  int i, temp_dist;
+  int i, i_dest, temp_dist;
   Vertex *temp = NULL;
 
   if (!graph || !graph->vertices || !graph->numVertices
@@ -544,21 +662,33 @@ int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
 
   for (i = 0; i < graph->numVertices; ++i)
   {
-    if (i != src)
-    {
+    if (graph->vertices[i]
+        && graph->vertices[i]->id != src)
       distance[i]     = INFINITY;
-      prev_node[i]    = UNKNOW_VETEX;
-    }
+    else
+      distance[i]     = 0;
+
+    prev_node[i]  = UNKNOW_VETEX;
   }
-  distance[src]   = 0;
-  prev_node[src]  = UNKNOW_VETEX;
 
   /* Update distance for src's neighbors */
-  temp = graph->vertices[src];
+  i = graph_get_vertex_by_id (graph, src);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Error: There is no edge with src %d in graph\n",
+           __func__, __LINE__, src);
+    return -1;
+  }
+
+  temp = graph->vertices[i];
   while (temp)
   {
-    distance[temp->edge.dest]   = temp->edge.weight;
-    prev_node[temp->edge.dest]  = src;
+    i = graph_get_vertex_by_id (graph, temp->edge.dest);
+    if (i != UNKNOW_VETEX)
+    {
+      distance[i]   = temp->edge.weight;
+      prev_node[i]  = src;
+    }
 
     temp = temp->next;
   }
@@ -568,11 +698,19 @@ int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
     temp = graph->vertices[i];
     while (temp)
     {
-      temp_dist = distance[temp->id] + temp->edge.weight;
-      if (temp_dist < distance[temp->edge.dest])
+      i = graph_get_vertex_by_id (graph, temp->id);
+      if (i == UNKNOW_VETEX)
+        continue;
+
+      i_dest = graph_get_vertex_by_id (graph, temp->edge.dest);
+      if (i_dest == UNKNOW_VETEX)
+        continue;
+
+      temp_dist = distance[i] + temp->edge.weight;
+      if (temp_dist < distance[i_dest])
       {
-        distance[temp->edge.dest]  = temp_dist;
-        prev_node[temp->edge.dest] = temp->id;
+        distance[i_dest]  = temp_dist;
+        prev_node[i_dest] = temp->id;
       }
       temp = temp->next;
     }
@@ -584,8 +722,16 @@ int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
     temp = graph->vertices[i];
     while (temp)
     {
-      temp_dist = distance[temp->id] + temp->edge.weight;
-      if (temp_dist < distance[temp->edge.dest])
+      i = graph_get_vertex_by_id (graph, temp->id);
+      if (i == UNKNOW_VETEX)
+        continue;
+
+      i_dest = graph_get_vertex_by_id (graph, temp->edge.dest);
+      if (i_dest == UNKNOW_VETEX)
+        continue;
+
+      temp_dist = distance[i] + temp->edge.weight;
+      if (temp_dist < distance[i_dest])
       {
         printf ("[%s,%d] Error: Detected negative weight cycles!\n", __func__, __LINE__);
         return -1;
@@ -629,7 +775,7 @@ int graph_bellman_ford (Graph *graph, int src)
     if (i != src)
     {
       printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
-      graph_print_prev_node (prev_node, src, i, graph->numVertices);
+      // graph_print_prev_node (graph, prev_node, src, i, graph->numVertices);
     }
   }
 
