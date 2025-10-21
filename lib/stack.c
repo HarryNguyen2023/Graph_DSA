@@ -3,7 +3,7 @@
 #include <string.h>
 #include "stack.h"
 
-Stack* stack_create (void) 
+Stack* stack_create (int capacity) 
 {
   Stack *stack = (Stack *)malloc(sizeof(Stack));
   if (! stack)
@@ -11,8 +11,9 @@ Stack* stack_create (void)
     printf("Error: Could not allocate memory for stack\n");
     return NULL;
   }
-  stack->depth = 0;
-  stack->top = NULL;
+  stack->capacity = capacity;
+  stack->depth    = 0;
+  stack->top      = NULL;
   return stack;
 }
 
@@ -47,11 +48,27 @@ int stack_is_empty (Stack* stack)
   return stack->depth == 0;
 }
 
+int stack_is_full (Stack* stack) 
+{
+  if (stack == NULL)
+  {
+    printf("[%s,%d] Error: Stack is NULL\n", __func__, __LINE__);
+    return -1;
+  }
+  return stack->depth == stack->capacity;
+}
+
 int stack_push (Stack* stack, void *data) 
 {
   if (stack == NULL)
   {
     printf("[%s,%d] Error: Stack is NULL\n", __func__, __LINE__);
+    return -1;
+  }
+
+  if (stack_is_full(stack))
+  {
+    printf("Error: Stack is already full\n");
     return -1;
   }
 
@@ -90,4 +107,35 @@ void* stack_pop (Stack* stack)
   free(temp);
   stack->depth--;
   return data;
+}
+
+void stack_dump_int (void *data)
+{
+  int *num = NULL;
+
+  if (! data)
+    return;
+
+  num = (int *)data;
+  printf ("%d ", *num);
+  return;
+}
+
+void stack_dump (Stack* stack, void (*stack_dump_node)(void *))
+{
+  void *temp = NULL;
+
+  if (! stack)
+    return;
+
+  while (! stack_is_empty(stack))
+  {
+    temp = stack_pop (stack);
+    if (temp && stack_dump_node)
+    {
+      (*stack_dump_node) (temp);
+    }
+  }
+
+  return;
 }

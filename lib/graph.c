@@ -306,7 +306,7 @@ int graph_DFS (Graph* graph, int start_vertex)
   }
   memset((void *)visited_vertices, 0, graph->numVertices * sizeof(int));
 
-  stack = stack_create ();
+  stack = stack_create (graph->numVertices);
   if (! stack)
   {
     printf ("[%s,%d] Error: Fail to allocate memory for stack\n", __func__, __LINE__);
@@ -461,41 +461,68 @@ int graph_path_node_dump (void *p)
   printf ("(s:%d,d:%d,w:%d)", path->V->id, path->V->edge.dest, path->V->edge.weight);
 }
 
-int graph_print_prev_node (Graph *graph, int *prev_node, int src, int dest, int size)
+static void stack_dump_int (void *data)
 {
-  int prev, i;
-  Stack stack = {0};
+  int *num = NULL;
 
-  if (!prev_node || !size || dest >= size)
+  if (! data)
+    return;
+
+  num = (int *)data;
+  printf ("-> %d ", *num);
+  return;
+}
+
+int graph_print_path (Graph *graph, int *prev_node, int src, int dest, int size)
+{
+  int prev, i_dest, i_src, rv;
+  Stack *stack = NULL;
+
+  if (!graph || !prev_node || !size)
     return -1;
 
-  i = graph_get_vertex_by_id (graph, dest);
-  if (i == UNKNOW_VETEX)
-    return 0;
+  stack = stack_create (graph->numVertices);
+  if (! stack)
+  {
+    printf ("[%s,%d] Error: Fail to allocate memory for stack\n", __func__, __LINE__);
+    return -1;
+  }
 
-  prev = prev_node[i];
-  while (prev != src && prev < size)
+  i_dest = graph_get_vertex_by_id (graph, dest);
+  if (i_dest == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] There no vertex %d in the graph!\n", __func__, __LINE__, dest);
+    return 0;
+  }
+
+  i_src = graph_get_vertex_by_id (graph, src);
+  if (i_src == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] There no vertex %d in the graph!\n", __func__, __LINE__, src);
+    return 0;
+  }
+
+  prev = prev_node[i_dest];
+  while (prev != i_src && prev < size)
   {
     if (prev != UNKNOW_VETEX)
-      stack_push (&stack, (void *)&prev);
-
-    i = graph_get_vertex_by_id (graph, prev);
-    if (i == UNKNOW_VETEX)
-      break;
-    prev = prev_node[i];
-  }
-
-  printf ("Path from %d to %d: ", src, dest);
-  while (! stack_is_empty(&stack))
-  {
-    int* temp = stack_pop (&stack);
-    if (temp)
     {
-      printf ("%d ", *temp);
+      if (prev == prev_node[i_dest])
+        rv = stack_push (stack, (void *)&prev_node[i_dest]);
+      else
+        rv = stack_push (stack, (void *)&prev_node[prev]);
+      if (rv != 0)
+        break;
     }
-  }
-  printf("\n");
 
+    prev = prev_node[prev];
+  }
+
+  printf ("Path from %d to %d: %d ", src, dest, src);
+  stack_dump (stack, stack_dump_int);
+  printf ("-> %d\n", dest);
+
+  stack_delete (stack);
   return 0;
 }
 
@@ -633,8 +660,8 @@ int graph_dijkstra (Graph *graph, int src)
     if (i != src
         && graph->vertices[i])
     {
-      printf ("Distance from %d to %d: %d\n", src, graph->vertices[i]->id, distance[i]);
-      // graph_print_prev_node (graph, prev_node, src, i, graph->numVertices);
+      printf ("\nDistance from %d to %d: %d\n", src, graph->vertices[i]->id, distance[i]);
+      graph_print_path (graph, prev_node, src, i, graph->numVertices);
     }
   }
 
@@ -775,7 +802,6 @@ int graph_bellman_ford (Graph *graph, int src)
     if (i != src)
     {
       printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
-      // graph_print_prev_node (graph, prev_node, src, i, graph->numVertices);
     }
   }
 

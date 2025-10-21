@@ -95,14 +95,15 @@ int main (int argc, char** argv)
   graph_print(graph);
   graph_BFS (graph, 3);
 
-  printf ("\nDijkstra's Algorithm: \n");
+  printf ("\n************** Dijkstra's Algorithm *****************\n");
   graph_dijkstra (graph, 2);
 
-  printf ("\nBellman-Ford Algorithm: \n");
+  printf ("\n************* Bellman-Ford Algorithm *************** \n");
   graph_bellman_ford (graph, 2);
 
   graph_deinit (graph);
 
+  printf ("\n************* Circular Buffer Test *************** \n");
   cirbuff_test ();
   return 0;
 }
