@@ -27,6 +27,12 @@ typedef struct Graph
   Vertex** vertices;
 } Graph;
 
+typedef struct GraphMat
+{
+  int numVertices;
+  int **vertices;
+} GraphMat;
+
 Graph* graph_init(int numVertices);
 void graph_deinit (Graph* graph);
 
@@ -40,5 +46,7 @@ int graph_dijkstra (Graph *graph, int src);
 int graph_bellman_ford (Graph *graph, int src);
 int graph_kruskal (Graph *graph);
 int graph_prim (Graph *graph, int start);
+int graph_ford_fulkerson (Graph *graph, int s, int t);
+int graph_floyd_warshall (Graph *graph);
 
 #endif /* __GRAPH_H__ */

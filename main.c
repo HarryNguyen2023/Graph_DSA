@@ -72,34 +72,31 @@ int main (int argc, char** argv)
 {
   Graph* graph = NULL;
   PriorityQueue *pq = NULL;
-  int numVertices = 0;
+  int numVertices = 6;
   Edge *edge = NULL;
-
-  printf ("Enter the number of vertices: ");
-  scanf ("%d", &numVertices);
   
   graph = graph_init (numVertices);
   if (graph == NULL) {
     printf("Error: Could not initialize graph\n");
     return -1;
   }
-  graph_add_edge(graph, 0, 1, 5);
-  graph_add_edge(graph, 0, 4, 7);
-  graph_add_edge(graph, 1, 2, 1);
-  graph_add_edge(graph, 1, 3, 4);
-  graph_add_edge(graph, 1, 4, 1);
-  graph_add_edge(graph, 2, 3, 4);
-  graph_add_edge(graph, 3, 4, 3);
+  graph_add_edge(graph, 0, 1, 8);
+  graph_add_edge(graph, 0, 4, 3);
+  graph_add_edge(graph, 1, 2, 9);
+  graph_add_edge(graph, 2, 3, 2);
+  graph_add_edge(graph, 4, 3, 7);
+  graph_add_edge(graph, 4, 5, 4);
+  graph_add_edge(graph, 5, 3, 5);
 
   graph_DFS (graph, 3);
   graph_print(graph);
   graph_BFS (graph, 3);
 
   printf ("\n************** Dijkstra's Algorithm *****************\n");
-  graph_dijkstra (graph, 2);
+  graph_dijkstra (graph, 4);
 
   printf ("\n************** Bellman-Ford Algorithm **************** \n");
-  graph_bellman_ford (graph, 2);
+  graph_bellman_ford (graph, 3);
 
   printf ("\n************** Circular Buffer Test ***************** \n");
   cirbuff_test ();
@@ -109,6 +106,13 @@ int main (int argc, char** argv)
 
   printf ("\n***************** Prim's Algorithm ****************** \n");
   graph_prim (graph, 1);
+
+  printf ("\n************ Ford-Fulkerson's Algorithm ************* \n");
+  /* Only use for directed graph */
+  // graph_ford_fulkerson (graph, 0, 3);
+
+  printf ("\n************ Floyd-Warshall's Algorithm ************* \n");
+  graph_floyd_warshall (graph);
 
   graph_deinit (graph);
   return 0;

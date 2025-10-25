@@ -12,6 +12,8 @@
 #define INFINITY     10000
 #define UNKNOW_VETEX -1
 
+#define MIN(A,B)    (((A) < (B)) ? (A) : (B))
+
 Vertex *vertex_init (int id, int dest, int weight)
 {
   Vertex* newVertex = (Vertex*)malloc(sizeof(Vertex));
@@ -473,20 +475,24 @@ static void stack_dump_int (void *data)
   return;
 }
 
-int graph_print_path (Graph *graph, int *prev_node, int src, int dest, int size)
+int graph_print_path_recursive (Graph *graph, int *prev_node, int i_src, int i_dest)
 {
-  int prev, i_dest, i_src, rv;
-  Stack *stack = NULL;
-
-  if (!graph || !prev_node || !size)
+  if (! graph || ! prev_node)
     return -1;
 
-  stack = stack_create (graph->numVertices);
-  if (! stack)
-  {
-    printf ("[%s,%d] Error: Fail to allocate memory for stack\n", __func__, __LINE__);
+  if (prev_node[i_dest] == i_src)
+    return i_dest;
+
+  if (graph->vertices[i_dest])
+    printf ("-> %d ", graph->vertices[graph_print_path_recursive (graph, prev_node, i_src, prev_node[i_dest])]->id);
+}
+
+int graph_print_path (Graph *graph, int *prev_node, int src, int dest)
+{
+  int prev, i_dest, i_src, rv, *temp = NULL, i;
+
+  if (!graph || !prev_node)
     return -1;
-  }
 
   i_dest = graph_get_vertex_by_id (graph, dest);
   if (i_dest == UNKNOW_VETEX)
@@ -502,27 +508,10 @@ int graph_print_path (Graph *graph, int *prev_node, int src, int dest, int size)
     return 0;
   }
 
-  prev = prev_node[i_dest];
-  while (prev != i_src && prev < size)
-  {
-    if (prev != UNKNOW_VETEX)
-    {
-      if (prev == prev_node[i_dest])
-        rv = stack_push (stack, (void *)&prev_node[i_dest]);
-      else
-        rv = stack_push (stack, (void *)&prev_node[prev]);
-      if (rv != 0)
-        break;
-    }
-
-    prev = prev_node[prev];
-  }
-
   printf ("Path from %d to %d: %d ", src, dest, src);
-  stack_dump (stack, stack_dump_int);
+  graph_print_path_recursive (graph, prev_node, i_src, i_dest);
   printf ("-> %d\n", dest);
 
-  stack_delete (stack);
   return 0;
 }
 
@@ -615,7 +604,7 @@ int dijkstra (Graph *graph, int src, int *distance, int *prev_node,
       if (temp_dist < distance[i_dest])
       {
         distance[i_dest]  = temp_dist;
-        prev_node[i_dest] = min->id;
+        prev_node[i_dest] = i;
       }
       min = min->next;
     }
@@ -657,11 +646,11 @@ int graph_dijkstra (Graph *graph, int src)
 
   for (i = 0; i < graph->numVertices; i++)
   {
-    if (i != src
-        && graph->vertices[i])
+    if (graph->vertices[i]
+        && graph->vertices[i]->id != src)
     {
       printf ("\nDistance from %d to %d: %d\n", src, graph->vertices[i]->id, distance[i]);
-      graph_print_path (graph, prev_node, src, i, graph->numVertices);
+      graph_print_path (graph, prev_node, src, graph->vertices[i]->id);
     }
   }
 
@@ -710,11 +699,11 @@ int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
   temp = graph->vertices[i];
   while (temp)
   {
-    i = graph_get_vertex_by_id (graph, temp->edge.dest);
-    if (i != UNKNOW_VETEX)
+    i_dest = graph_get_vertex_by_id (graph, temp->edge.dest);
+    if (i_dest != UNKNOW_VETEX)
     {
-      distance[i]   = temp->edge.weight;
-      prev_node[i]  = src;
+      distance[i_dest]   = temp->edge.weight;
+      prev_node[i_dest]  = i;
     }
 
     temp = temp->next;
@@ -737,7 +726,7 @@ int bellman_ford (Graph *graph, int src, int *distance, int *prev_node)
       if (temp_dist < distance[i_dest])
       {
         distance[i_dest]  = temp_dist;
-        prev_node[i_dest] = temp->id;
+        prev_node[i_dest] = i;
       }
       temp = temp->next;
     }
@@ -799,9 +788,11 @@ int graph_bellman_ford (Graph *graph, int src)
 
   for (i = 0; i < graph->numVertices; i++)
   {
-    if (i != src)
+    if (graph->vertices[i]
+        && graph->vertices[i]->id != src)
     {
-      printf ("Distance from %d to %d: %d\n", src, i, distance[i]);
+      printf ("\nDistance from %d to %d: %d\n", src, graph->vertices[i]->id, distance[i]);
+      graph_print_path (graph, prev_node, src, graph->vertices[i]->id);
     }
   }
 
@@ -1062,4 +1053,418 @@ EXIT:
     free (minimum_span_tree);
   minimum_span_tree = NULL;
   return rv;
+}
+
+int bfs_util (Graph *graph, int s, int t, int *parent)
+{
+  int *visited = NULL, *front = NULL, i_s, i_t, i_src, i_dest;
+  Queue *queue = NULL;
+  Vertex *temp = NULL;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices
+      || ! parent)
+    return 0;
+
+  visited = (int *)malloc(graph->numVertices * sizeof(int));
+  if (! visited)
+  {
+    printf ("[%s,%d] Fail to allocated memory for visisted array\n", __func__, __LINE__);
+    return 0;
+  }
+  memset (visited, 0, graph->numVertices * sizeof(int));
+
+  queue = queue_create ();
+  if (! queue)
+  {
+    printf ("[%s,%d] Fail to create queue for BFS algorithm\n", __func__, __LINE__);
+    goto ERR_EXIT;
+  }
+
+  i_s = graph_get_vertex_by_id (graph, s);
+  if (i_s == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Source vertex %d is not in the graph\n", __func__, __LINE__, s);
+    goto ERR_EXIT;
+  }
+
+  i_t = graph_get_vertex_by_id (graph, t);
+  if (i_t == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Sink vertex %d is not in the graph\n", __func__, __LINE__, t);
+    goto ERR_EXIT;
+  }
+
+  queue_enqueue (queue, (void *)&s);
+  visited[i_s] = 1;
+
+  while (! queue_is_empty (queue))
+  {
+    queue_dequeue (queue, (void **)&front);
+    i_src = graph_get_vertex_by_id (graph, *front);
+    if (i_src == UNKNOW_VETEX)
+    {
+      printf ("[%s,%d] Vertex %d is not in the graph\n", __func__, __LINE__, *front);
+      goto ERR_EXIT2;
+    }
+
+    temp = graph->vertices[i_src];
+    while (temp)
+    {
+      i_dest = graph_get_vertex_by_id (graph, temp->edge.dest);
+      if (i_dest == UNKNOW_VETEX)
+      {
+        printf ("[%s,%d] Vertex %d is not in the graph\n", __func__, __LINE__, temp->edge.dest);
+        goto ERR_EXIT2;
+      }
+
+      if (! visited[i_dest] && temp->edge.weight > 0)
+      {
+        visited[i_dest] = 1;
+        parent[i_dest] = i_src;
+        if (i_dest == i_t)
+          goto SUC_EXIT;
+
+        queue_enqueue (queue, (void *)&temp->edge.dest);
+      }
+
+      temp = temp->next;
+    }
+  }
+
+ERR_EXIT2:
+  queue_delete (queue);
+ERR_EXIT:
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return 0;
+
+SUC_EXIT:
+  queue_delete (queue);
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return 1;
+}
+
+void graph_copy (Graph *dest, Graph *src)
+{
+  int i = 0;
+  Vertex *temp;
+
+  if (!src || !src->numVertices || !src->vertices
+      || !dest)
+    return;
+
+  for (i = 0; i < src->numVertices; ++i)
+  {
+    if (src->vertices[i])
+    {
+      temp = src->vertices[i];
+      while (temp)
+      {
+        graph_add_edge (dest, temp->id, temp->edge.dest, temp->edge.weight);
+
+        temp = temp->next;
+      }
+    }
+  }
+}
+
+void graph_add_weight (Graph *graph, int src, int dest, int weight)
+{
+  int i = 0;
+  Vertex *temp = NULL;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices)
+    return;
+
+  i = graph_get_vertex_by_id (graph, src);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Vertex %d is not in the graph\n", __func__, __LINE__, src);
+    return;
+  }
+
+  if (graph->vertices[i])
+  {
+    temp = graph->vertices[i];
+    while (temp)
+    {
+      if (temp->edge.dest == dest)
+        break;
+      temp = temp->next;
+    }
+
+    temp->edge.weight += weight;
+  }
+
+  i = graph_get_vertex_by_id (graph, dest);
+  if (i == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Vertex %d is not in the graph\n", __func__, __LINE__, dest);
+    return;
+  }
+
+  if (graph->vertices[i])
+  {
+    temp = graph->vertices[i];
+    while (temp)
+    {
+      if (temp->edge.dest == src)
+        break;
+      temp = temp->next;
+    }
+
+    temp->edge.weight -= weight;
+  }
+}
+
+int graph_ford_fulkerson (Graph *graph, int s, int t)
+{
+  Graph *rgraph = NULL;
+  Vertex *temp;
+  int i_s, i_t, i, i_parent, *parent = NULL, max_flow = 0, path_flow, path_capacity = 0;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices)
+    return -1;
+
+  i_s = graph_get_vertex_by_id (graph, s);
+  if (i_s == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Source vertex %d is not in the graph\n", __func__, __LINE__, s);
+    return -1;
+  }
+
+  i_t = graph_get_vertex_by_id (graph, t);
+  if (i_t == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Sink vertex %d is not in the graph\n", __func__, __LINE__, t);
+    return -1;
+  }
+
+  rgraph = graph_init (graph->numVertices);
+  if (! rgraph)
+  {
+    printf ("[%s,%d] Fail to create the residual graph\n", __func__, __LINE__);
+    return -1;
+  }
+  graph_copy (rgraph, graph);
+
+  parent = (int *)malloc(graph->numVertices * sizeof (int));
+  if (! parent)
+  {
+    printf ("[%s,%d] Fail to allocate memory for parent arry\n", __func__, __LINE__);
+    goto ERR_EXIT;
+  }
+  for (int i = 0; i < graph->numVertices; ++i)
+    parent[i] = UNKNOW_VETEX;
+
+  while (bfs_util (rgraph, s, t, parent))
+  {
+    path_flow = INFINITY;
+    for (i = i_t; i != i_s; i = parent[i])
+    {
+      i_parent = parent[i];
+      if (i_parent == UNKNOW_VETEX)
+        break;
+
+      if (rgraph->vertices[i_parent] && rgraph->vertices[i])
+      {
+        temp = rgraph->vertices[i_parent];
+        while (temp)
+        {
+          if (temp->edge.dest == rgraph->vertices[i]->id)
+            break;
+
+          temp = temp->next;
+        }
+        if (temp)
+          path_capacity = temp->edge.weight;
+      }
+      path_flow = MIN(path_flow, path_capacity);
+    }
+
+    for (i = i_t; i != i_s; i = parent[i])
+    {
+      i_parent = parent[i];
+      if (i_parent == UNKNOW_VETEX)
+        break;
+
+      if (rgraph->vertices[i_parent] && rgraph->vertices[i])
+      {
+        graph_add_weight (rgraph, rgraph->vertices[i_parent]->id, rgraph->vertices[i]->id, path_flow);
+      }
+    }
+
+    max_flow += path_flow;
+  }
+
+  printf ("Max Flow of the network is: %d\n", max_flow);
+
+  if (parent)
+    free (parent);
+  parent = NULL;
+
+  graph_deinit (rgraph);
+  return max_flow;
+
+ERR_EXIT:
+  graph_deinit (rgraph);
+  return -1;
+}
+
+GraphMat *graph_matrix_init (int numVertices)
+{
+	int i = 0;
+  GraphMat *g = NULL;
+
+	if (! numVertices)
+		return NULL;
+
+  g = (GraphMat *)malloc(sizeof (GraphMat));
+  if (! g)
+    return NULL;
+
+  g->numVertices = numVertices;
+	g->vertices = (int **)calloc(numVertices, sizeof (int *));
+	if (! g->vertices)
+		return NULL;
+
+	for (i = 0; i < numVertices; ++i)
+	{
+		*(g->vertices + i) = calloc (numVertices, sizeof(int));
+		if (! *(g->vertices + i))
+			goto ERR;
+	}
+	return g;
+
+ERR:
+	for (i; i >= 0; i--)
+	{
+		free (*(g->vertices + i));
+	}
+	free (g->vertices);
+  return NULL;
+}
+
+void graph_matrix_deinit (GraphMat *g)
+{
+  int i = 0;
+
+  if (! g)
+    return;
+
+  if (g->vertices)
+  {
+    for (i = 0; i < g->numVertices; ++i)
+      free (*(g->vertices + i));
+
+    free (g->vertices);
+  }
+  g->vertices = NULL;
+  g->numVertices = 0;
+  free (g);
+  g = NULL;
+}
+
+int graph_convert_list_to_matrix (Graph *graph, GraphMat **g_mat)
+{
+  int i = 0, j = 0;
+  Vertex *temp = NULL;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices)
+    return -1;
+
+  *g_mat = graph_matrix_init (graph->numVertices);
+  if (! g_mat)
+  {
+    printf ("[%s,%d] Fail to create graph matrix\n", __func__, __LINE__);
+    return -1;
+  }
+
+  for (i = 0; i < (*g_mat)->numVertices; ++i)
+    for (j = 0; j < (*g_mat)->numVertices; ++j)
+      (*g_mat)->vertices[i][j] = INFINITY;
+
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    if (graph->vertices[i])
+    {
+      temp = graph->vertices[i];
+      while (temp)
+      {
+        (*g_mat)->vertices[temp->id][temp->edge.dest] = temp->edge.weight;
+
+        temp = temp->next;
+      }
+    }
+  }
+
+  return 0;
+}
+
+int floyd_warshall (Graph *graph, GraphMat **g_mat)
+{
+  int i, j, k;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices)
+    return -1;
+
+  graph_convert_list_to_matrix (graph, g_mat);
+  if (! (*g_mat))
+  {
+    printf ("[%s,%d] Fail to create graph matrix\n", __func__, __LINE__);
+    return -1;
+  }
+
+  for (k = 0; k < (*g_mat)->numVertices; ++k)
+  {
+    for (i = 0; i < (*g_mat)->numVertices; ++i)
+    {
+      for (j = 0; j < (*g_mat)->numVertices; ++j)
+      {
+        if ((*g_mat)->vertices[i][k] + (*g_mat)->vertices[k][j] < (*g_mat)->vertices[i][j])
+          (*g_mat)->vertices[i][j] = (*g_mat)->vertices[i][k] + (*g_mat)->vertices[k][j];
+      }
+    }
+  }
+
+  return 0;
+}
+
+int graph_floyd_warshall (Graph *graph)
+{
+  GraphMat *g_mat = NULL;
+  int rv = 0, i, j;
+
+  if (! graph || ! graph->numVertices || ! graph->vertices)
+    return -1;
+
+  rv = floyd_warshall (graph, &g_mat);
+  if (rv != 0)
+  {
+    printf ("[%s,%d] Fail to perform the floyd warshall algorithm\n", __func__, __LINE__);
+    return rv;
+  }
+
+  if (g_mat)
+  {
+    printf ("The shortest path matrix: \n");
+    for (i = 0; i < g_mat->numVertices; ++i)
+    {
+      for (j = 0; j < g_mat->numVertices; ++j)
+        if (g_mat->vertices[i][j] == INFINITY)
+          printf ("%4s ", "INF");
+        else
+          printf ("%4d ", g_mat->vertices[i][j]);
+      printf ("\n");
+    }
+    printf ("\n");
+  }
+
+  if (g_mat)
+    graph_matrix_deinit (g_mat);
+
+  return 0;
 }
