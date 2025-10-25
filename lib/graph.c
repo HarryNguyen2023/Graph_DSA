@@ -810,3 +810,256 @@ int graph_bellman_ford (Graph *graph, int src)
 
   return 0;
 }
+
+int graph_edge_cmp (void *v1, void *v2)
+{
+  Vertex *vertex_1 = (Vertex *)v1;
+  Vertex *vertex_2 = (Vertex *)v2;
+
+  if (!vertex_1 && !vertex_2)
+    return 0;
+
+  if (!vertex_1 || !vertex_2)
+    return 1;
+
+  if ((vertex_1->edge.weight) > (vertex_2->edge.weight))
+    return 1;
+  else if ((vertex_1->edge.weight) < (vertex_2->edge.weight))
+    return -1;
+  else
+  {
+    if ((vertex_1->edge.dest) > (vertex_2->edge.dest))
+      return 1;
+    else if ((vertex_1->edge.dest) < (vertex_2->edge.dest))
+      return -1;
+    else
+    {
+      if (vertex_1->id > vertex_2->id)
+        return 1;
+      else if (vertex_1->id < vertex_2->id)
+        return -1;
+      else
+        return 0;
+    }
+  }
+
+  return 0;
+}
+
+int kruskal (Graph *graph, Graph* minimum_span_tree)
+{
+  int *visited = NULL;
+  int graph_max_edges = 0, i, rv = 0, i_src, i_dest;
+  PriorityQueue *pq = NULL;
+  Vertex *temp = NULL;
+
+  if ((! graph) || (! minimum_span_tree)
+      || (! graph->numVertices) || (! graph->vertices)
+      || (! minimum_span_tree->numVertices) || (! minimum_span_tree->vertices))
+    return -1;
+
+  visited = (int *)malloc(graph->numVertices * sizeof (int));
+  if (! visited)
+  {
+    printf ("[%s,%d] Fail to allocate memory for visited array\n", __func__, __LINE__);
+    return -1;
+  }
+  memset (visited, 0, graph->numVertices * sizeof (int));
+
+  graph_max_edges = ((graph->numVertices) * (graph->numVertices - 1));
+  pq = pq_create (graph_max_edges, graph_edge_cmp, NULL);
+  if (! pq)
+  {
+    printf ("[%s,%d] Fail to create priority queue!\n", __func__, __LINE__);
+    return -1;
+  }
+
+  /* Add all edges into the priority queue */
+  for (i = 0; i < graph->numVertices; ++i)
+  {
+    if (graph->vertices[i])
+    {
+      temp = graph->vertices[i];
+      while (temp)
+      {
+        pq_add (pq, (void *)temp);
+
+        temp = temp->next;
+      }
+    }
+  }
+
+  temp = NULL;
+  while (! pq_is_empty (pq))
+  {
+    temp = (Vertex *)pq_extract_top(pq);
+    if (temp)
+    {
+      i_src   = graph_get_vertex_by_id (graph, temp->id);
+      i_dest  = graph_get_vertex_by_id (graph, temp->edge.dest);
+      if (i_src != UNKNOW_VETEX
+          && i_dest != UNKNOW_VETEX
+          && ! (visited[i_src] == 1
+                && visited[i_dest] == 1))
+      {
+        graph_add_edge (minimum_span_tree, temp->id, temp->edge.dest, temp->edge.weight);
+
+        visited[i_src]  = 1;
+        visited[i_dest] = 1;
+      }
+    }
+  }
+
+  pq_deinit (pq);
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return 0;
+
+ERR_EXIT:
+  pq_deinit (pq);
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return -1;
+}
+
+int graph_kruskal (Graph *graph)
+{
+  Graph *minimum_span_tree = NULL;
+  int rv = 0;
+
+  if (! graph)
+    return -1;
+
+  minimum_span_tree = graph_init (graph->numVertices);
+  if (! minimum_span_tree)
+  {
+    printf ("[%s,%d] Fail to create minimum spanning tree!\n", __func__, __LINE__);
+    goto EXIT;
+  }
+  rv = kruskal (graph, minimum_span_tree);
+  if (rv != 0)
+  {
+    printf ("[%s,%d] Fail to perform kruskal algorithm\n", __func__, __LINE__);
+    goto EXIT;
+  }
+
+  printf ("Minimum Spanning Tree:\n");
+  graph_print (minimum_span_tree);
+
+EXIT:
+  if (minimum_span_tree)
+    free (minimum_span_tree);
+  minimum_span_tree = NULL;
+  return rv;
+}
+
+int prim (Graph *graph, Graph* minimum_span_tree, int start)
+{
+  int *visited = NULL;
+  int graph_max_edges = 0, i, rv = 0, i_src, i_dest, i_start;
+  PriorityQueue *pq = NULL;
+  Vertex *temp = NULL, *top = NULL;
+
+  if ((! graph) || (! minimum_span_tree)
+      || (! graph->numVertices) || (! graph->vertices)
+      || (! minimum_span_tree->numVertices) || (! minimum_span_tree->vertices))
+    return -1;
+
+  i_start = graph_get_vertex_by_id (graph, start);
+  if (i_start == UNKNOW_VETEX)
+  {
+    printf ("[%s,%d] Start vertex %d is not in the graph\n", __func__, __LINE__, start);
+    return -1;
+  }
+
+  visited = (int *)malloc(graph->numVertices * sizeof (int));
+  if (! visited)
+  {
+    printf ("[%s,%d] Fail to allocate memory for visited array\n", __func__, __LINE__);
+    return -1;
+  }
+  memset (visited, 0, graph->numVertices * sizeof (int));
+
+  graph_max_edges = graph->numVertices - 1;
+  pq = pq_create (graph_max_edges, graph_edge_cmp, NULL);
+  if (! pq)
+  {
+    printf ("[%s,%d] Fail to create priority queue!\n", __func__, __LINE__);
+    goto ERR_EXIT;
+  }
+
+  while (i_start != UNKNOW_VETEX && visited[i_start] == 0 && graph->vertices[i_start])
+  {
+    visited[i_start] = 1;
+    temp = graph->vertices[i_start];
+    while (temp)
+    {
+      pq_add (pq, (void *)temp);
+
+      temp = temp->next;
+    }
+
+    do
+    {
+      top = (Vertex *) pq_extract_top (pq);
+      if (top)
+      {
+        i_start = graph_get_vertex_by_id (graph, top->edge.dest);
+        if (i_start != UNKNOW_VETEX
+            && visited[i_start] == 0)
+        {
+          graph_add_edge (minimum_span_tree, top->id, top->edge.dest, top->edge.weight);
+          break;
+        }
+      }
+    } while (! pq_is_empty (pq));
+
+    pq_flush (pq);
+  }
+
+  pq_deinit (pq);
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return 0;
+
+ERR_EXIT:
+  if (visited)
+    free (visited);
+  visited = NULL;
+  return -1;
+}
+
+int graph_prim (Graph *graph, int start)
+{
+  Graph *minimum_span_tree = NULL;
+  int rv = 0;
+
+  if (! graph)
+    return -1;
+
+  minimum_span_tree = graph_init (graph->numVertices);
+  if (! minimum_span_tree)
+  {
+    printf ("[%s,%d] Fail to create minimum spanning tree!\n", __func__, __LINE__);
+    goto EXIT;
+  }
+
+  rv = prim (graph, minimum_span_tree, start);
+  if (rv != 0)
+  {
+    printf ("[%s,%d] Fail to perform kruskal algorithm\n", __func__, __LINE__);
+    goto EXIT;
+  }
+
+  printf ("Minimum Spanning Tree:\n");
+  graph_print (minimum_span_tree);
+
+EXIT:
+  if (minimum_span_tree)
+    free (minimum_span_tree);
+  minimum_span_tree = NULL;
+  return rv;
+}

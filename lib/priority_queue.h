@@ -27,5 +27,6 @@ void pq_print (PriorityQueue *pq);
 PQNode* pq_peek_top (PriorityQueue *pq);
 void* pq_extract_top (PriorityQueue *pq);
 int pq_is_empty (PriorityQueue *pq);
+void pq_flush (PriorityQueue *pq);
 
 #endif /* __PRIORITY_QUEUE_H__ */

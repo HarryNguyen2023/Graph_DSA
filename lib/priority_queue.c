@@ -212,3 +212,15 @@ int pq_is_empty (PriorityQueue *pq)
 
   return (pq->size == 0);
 }
+
+void pq_flush (PriorityQueue *pq)
+{
+  if (! pq)
+    return;
+
+  while (! pq_is_empty(pq))
+  {
+    pq_extract_top (pq);
+  }
+  return;
+}

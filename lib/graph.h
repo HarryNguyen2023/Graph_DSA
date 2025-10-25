@@ -38,5 +38,7 @@ int graph_DFS (Graph* graph, int start_vertex);
 int graph_BFS (Graph* graph, int start_vertex);
 int graph_dijkstra (Graph *graph, int src);
 int graph_bellman_ford (Graph *graph, int src);
+int graph_kruskal (Graph *graph);
+int graph_prim (Graph *graph, int start);
 
 #endif /* __GRAPH_H__ */

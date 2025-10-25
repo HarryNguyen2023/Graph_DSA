@@ -98,12 +98,18 @@ int main (int argc, char** argv)
   printf ("\n************** Dijkstra's Algorithm *****************\n");
   graph_dijkstra (graph, 2);
 
-  printf ("\n************* Bellman-Ford Algorithm *************** \n");
+  printf ("\n************** Bellman-Ford Algorithm **************** \n");
   graph_bellman_ford (graph, 2);
 
-  graph_deinit (graph);
-
-  printf ("\n************* Circular Buffer Test *************** \n");
+  printf ("\n************** Circular Buffer Test ***************** \n");
   cirbuff_test ();
+
+  printf ("\n*************** Kruskal's Algorithm ***************** \n");
+  graph_kruskal (graph);
+
+  printf ("\n***************** Prim's Algorithm ****************** \n");
+  graph_prim (graph, 1);
+
+  graph_deinit (graph);
   return 0;
 }
