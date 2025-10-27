@@ -8,6 +8,9 @@
 #include "lib/queue.h"
 #include "lib/priority_queue.h"
 #include "lib/circular_buff.h"
+#include "lib/binary_tree.h"
+#include "lib/huffman_code.h"
+#include "lib/hash_table.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
@@ -115,5 +118,32 @@ int main (int argc, char** argv)
   graph_floyd_warshall (graph);
 
   graph_deinit (graph);
+
+  printf ("\n************ Huffman Coding's Algorithm ************* \n");
+  char str[] = "BCAADDDCCACACAC", *encoded_str = NULL, *arr = NULL, *decoded_str = NULL;
+  int s_len = sizeof (str) / sizeof (char) - 1, encoded_str_len = 0, decoded_str_len = 0;
+  BinTreeNode *root = NULL;
+  HuffmanData *huffman_data = NULL;
+
+  huffman_encoding (str, s_len, &encoded_str, &encoded_str_len, &root, &huffman_data);
+
+  arr = (char *)calloc (11, sizeof(char));
+  if (! arr) return -1;
+
+  memset (arr, 0, 11 * sizeof (char));
+  printf ("Output Huffman encoded string (len %d): %s\n", encoded_str_len, encoded_str);
+  printf ("Output Huffman encoded tree:\n");
+  huffman_code_tree_print (root, arr, 0);
+
+  huffman_decoding (root, encoded_str, encoded_str_len, &decoded_str, &decoded_str_len);
+  printf ("Output Huffman decoded string (len %d): %s\n", decoded_str_len, decoded_str);
+
+  if (huffman_data) free(huffman_data);
+  huffman_data = NULL;
+  if (root) bin_tree_delete_util (root);
+  root = NULL;
+  if (encoded_str)  free(encoded_str);
+  if (decoded_str)  free(decoded_str);
+
   return 0;
 }
