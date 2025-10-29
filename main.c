@@ -14,6 +14,7 @@
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
+#define MAX(A,B)            ((A) > (B)) ? A : B
 
 void cirbuff_print_int (void *data)
 {
@@ -71,6 +72,164 @@ int cirbuff_test (void)
   return 0;
 }
 
+int huffman_coding_test (void)
+{
+  char str[] = "BCAADDDCCACACAC", *encoded_str = NULL, *arr = NULL, *decoded_str = NULL;
+  int s_len = sizeof (str) / sizeof (char) - 1, encoded_str_len = 0, decoded_str_len = 0;
+  BinTreeNode *root = NULL;
+  HuffmanData *huffman_data = NULL;
+
+  huffman_encoding (str, s_len, &encoded_str, &encoded_str_len, &root, &huffman_data);
+
+  arr = (char *)calloc (11, sizeof(char));
+  if (! arr) return -1;
+
+  memset (arr, 0, 11 * sizeof (char));
+  printf ("Output Huffman encoded string (len %d): %s\n", encoded_str_len, encoded_str);
+  printf ("Output Huffman encoded tree:\n");
+  huffman_code_tree_print (root, arr, 0);
+
+  huffman_decoding (root, encoded_str, encoded_str_len, &decoded_str, &decoded_str_len);
+  printf ("Output Huffman decoded string (len %d): %s\n", decoded_str_len, decoded_str);
+
+  if (huffman_data) free(huffman_data);
+  huffman_data = NULL;
+  if (root) bin_tree_delete_util (root);
+  root = NULL;
+  if (encoded_str)  free(encoded_str);
+  if (decoded_str)  free(decoded_str);
+
+  return 0;
+}
+
+void reverse_string (char *str)
+{
+  char temp = '\0';
+  int i, len = 0;
+
+  if (! str)
+    return;
+
+  len = strlen(str);
+  for (i = 0; i < len / 2; ++i)
+  {
+    temp = str[i];
+    str[i] = str[len - i - 1];
+    str[len - i - 1] = temp;
+  }
+}
+
+void lcs_util (char *str_1, char *str_2, char** lcs_str, int *lcs_len)
+{
+  int str_len_1 = 0, str_len_2 = 0, i, j;
+  unsigned char **str_mat = NULL;
+  char *reverse_str = NULL;
+
+  if (! str_1 || ! str_2)
+    return;
+
+  str_len_1 = strlen (str_1);
+  str_len_2 = strlen (str_2);
+  if (! str_len_1 || ! str_len_2)
+  {
+    printf ("[%s,%d] Error: Invalid string len str1:%d,str2:%d\n",
+            __func__, __LINE__, str_len_1, str_len_2);
+    return;
+  }
+
+  str_mat = (unsigned char **)calloc((str_len_1 + 1), sizeof(unsigned char *));
+  if (! str_mat)
+  {
+    printf ("[%s,%d] Fail to allocate memory for the string matrix\n", __func__, __LINE__);
+    return;
+  }
+
+  for (i = 0; i < (str_len_1 + 1); ++i)
+  {
+    *(str_mat + i) = (unsigned char *)calloc((str_len_2 + 1), sizeof(unsigned char));
+    if (! *(str_mat + i))
+    {
+      printf ("[%s,%d] Fail to allocate memory for the string matrix column %d\n", __func__, __LINE__, i);
+      goto EXIT;
+    }
+    memset (*(str_mat + i), 0, (str_len_2 + 1) * sizeof(unsigned char));
+  }
+
+  for (i = 1; i < str_len_1 + 1; i++)
+  {
+    for (j = 1; j < str_len_2 + 1; j++)
+    {
+      if (str_1[i - 1] == str_2[j - 1])
+        str_mat[i][j] = str_mat[i - 1][j - 1] + 1;
+      else
+        str_mat[i][j] = MAX(str_mat[i - 1][j], str_mat[i][j - 1]);
+    }
+  }
+
+  i = str_len_1;
+  j = str_len_2;
+  while (i && j)
+  {
+    if (str_mat[i][j] == str_mat[i - 1][j])
+      i--;
+    else if (str_mat[i][j] == str_mat[i][j - 1])
+      j--;
+    else
+    {
+      (*lcs_len)++;
+      reverse_str = (char *)realloc(reverse_str, (*lcs_len + 1) * sizeof(char));
+      if (! reverse_str)
+        goto EXIT;
+
+      reverse_str[*lcs_len - 1]  = str_1[i - 1];
+      reverse_str[*lcs_len]      = '\0';
+      i--;
+      j--;
+    }
+  }
+
+  *lcs_str = (char *)malloc((*lcs_len + 1) * sizeof(char));
+  if (! *lcs_str)
+    goto EXIT;
+
+  strcpy (*lcs_str, reverse_str);
+  reverse_string (*lcs_str);
+
+EXIT:
+  if (reverse_str)  free (reverse_str);
+  reverse_str = NULL;
+  for (i = i - 1; i >= 0; i--)
+  {
+    if (*(str_mat + i))
+      free (*(str_mat + i));
+    *(str_mat + i) = NULL;
+  }
+  free (str_mat);
+  str_mat = NULL;
+  return;
+}
+
+void lcs (char *str_1, char *str_2)
+{
+  char *lcs_str = NULL;
+  int lcs_len = 0;
+
+   if (! str_1 || ! str_2)
+    return;
+
+  lcs_util (str_1, str_2, &lcs_str, &lcs_len);
+
+  if (lcs_str && lcs_len)
+  {
+    printf ("The LCS of string %s vs string %s is: %s, lenght %d\n",
+            str_1, str_2, lcs_str, lcs_len);
+  }
+
+  if (lcs_str)  free (lcs_str);
+  lcs_str = NULL;
+  return;
+}
+
 int main (int argc, char** argv) 
 {
   Graph* graph = NULL;
@@ -120,30 +279,12 @@ int main (int argc, char** argv)
   graph_deinit (graph);
 
   printf ("\n************ Huffman Coding's Algorithm ************* \n");
-  char str[] = "BCAADDDCCACACAC", *encoded_str = NULL, *arr = NULL, *decoded_str = NULL;
-  int s_len = sizeof (str) / sizeof (char) - 1, encoded_str_len = 0, decoded_str_len = 0;
-  BinTreeNode *root = NULL;
-  HuffmanData *huffman_data = NULL;
+  huffman_coding_test();
 
-  huffman_encoding (str, s_len, &encoded_str, &encoded_str_len, &root, &huffman_data);
-
-  arr = (char *)calloc (11, sizeof(char));
-  if (! arr) return -1;
-
-  memset (arr, 0, 11 * sizeof (char));
-  printf ("Output Huffman encoded string (len %d): %s\n", encoded_str_len, encoded_str);
-  printf ("Output Huffman encoded tree:\n");
-  huffman_code_tree_print (root, arr, 0);
-
-  huffman_decoding (root, encoded_str, encoded_str_len, &decoded_str, &decoded_str_len);
-  printf ("Output Huffman decoded string (len %d): %s\n", decoded_str_len, decoded_str);
-
-  if (huffman_data) free(huffman_data);
-  huffman_data = NULL;
-  if (root) bin_tree_delete_util (root);
-  root = NULL;
-  if (encoded_str)  free(encoded_str);
-  if (decoded_str)  free(decoded_str);
+  printf ("\n******* Longest Common Subsequent's Algorithm ******** \n");
+  char str1[] = "ACADB";
+  char str2[] = "CBDA";
+  lcs(str1, str2);
 
   return 0;
 }
