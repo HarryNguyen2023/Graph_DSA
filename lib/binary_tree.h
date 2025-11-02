@@ -9,7 +9,6 @@ struct BinTreeNode
   BinTreeNode *right;
   void        *data;
   void        (*bin_tree_node_dump) (void *);
-  void        (*bin_tree_node_del) (void *);
 };
 
 typedef struct BinTree
@@ -18,7 +17,7 @@ typedef struct BinTree
   BinTreeNode *root;
 } BinTree;
 
-BinTreeNode *bin_tree_node_create (void *data, void (*bin_tree_node_dump)(void *), void (*bin_tree_node_del)(void *));
+BinTreeNode *bin_tree_node_create (void *data, void (*bin_tree_node_dump)(void *));
 void bin_tree_node_delete (BinTreeNode *node);
 BinTree *bin_tree_create (void);
 void bin_tree_delete_util (BinTreeNode *root);

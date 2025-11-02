@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "binary_tree.h"
 
-BinTreeNode *bin_tree_node_create (void *data, void (*bin_tree_node_dump)(void *), void (*bin_tree_node_del)(void *))
+BinTreeNode *bin_tree_node_create (void *data, void (*bin_tree_node_dump)(void *))
 {
   BinTreeNode *node = NULL;
 
@@ -17,7 +17,8 @@ BinTreeNode *bin_tree_node_create (void *data, void (*bin_tree_node_dump)(void *
   node->right = NULL;
   node->data  = data;
   node->bin_tree_node_dump  = bin_tree_node_dump;
-  node->bin_tree_node_del   = bin_tree_node_del;
+
+  return node;
 }
 
 void bin_tree_node_delete (BinTreeNode *node)
@@ -64,6 +65,8 @@ void bin_tree_delete (BinTree *tree)
     return;
 
   bin_tree_delete_util (tree->root);
+  free (tree);
+  tree = NULL;
 }
 
 BinTreeNode *bin_tree_insert_left (BinTreeNode *root, void *data)
@@ -71,7 +74,7 @@ BinTreeNode *bin_tree_insert_left (BinTreeNode *root, void *data)
   if (! root)
     return NULL;
 
-  root->left = bin_tree_node_create (data, root->bin_tree_node_dump, root->bin_tree_node_del);
+  root->left = bin_tree_node_create (data, root->bin_tree_node_dump);
   return root->left;
 }
 
@@ -80,7 +83,7 @@ BinTreeNode *bin_tree_insert_right (BinTreeNode *root, void *data)
   if (! root)
     return NULL;
 
-  root->right = bin_tree_node_create (data, root->bin_tree_node_dump, root->bin_tree_node_del);
+  root->right = bin_tree_node_create (data, root->bin_tree_node_dump);
   return root->right;
 }
 

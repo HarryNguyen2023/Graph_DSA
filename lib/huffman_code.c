@@ -63,16 +63,6 @@ HuffmanData *huffman_data_create (char item, int freq)
   return node;
 }
 
-void huffman_data_delete (void *data)
-{
-  HuffmanData *node = (HuffmanData *)data;
-  if (! node)
-    return;
-
-  free (node);
-  node = NULL;
-}
-
 void huffman_data_dump (void *node)
 {
   HuffmanData *node_data = (HuffmanData *)node;
@@ -207,7 +197,7 @@ BinTreeNode *huffman_coding_util (char *symbol, int *freq, int symbol_num, Huffm
   {
     (*huffman_data)[i].freq  = freq[i];
     (*huffman_data)[i].item  = symbol[i];
-    node = bin_tree_node_create ((void *)&(*huffman_data)[i], huffman_data_dump, huffman_data_delete);
+    node = bin_tree_node_create ((void *)&(*huffman_data)[i], huffman_data_dump);
     if (! node)
     {
       printf ("[%s,%d] Fail to create Binary Tree node\n", __func__, __LINE__);
@@ -222,8 +212,7 @@ BinTreeNode *huffman_coding_util (char *symbol, int *freq, int symbol_num, Huffm
     right = (BinTreeNode *)pq_extract_top (pq);
 
     if (left && right)
-      top = bin_tree_node_create (huffman_data_create ('$', ((HuffmanData *)(left->data))->freq + ((HuffmanData *)(right->data))->freq),
-                                 huffman_data_dump, huffman_data_delete);
+      top = bin_tree_node_create (huffman_data_create ('$', ((HuffmanData *)(left->data))->freq + ((HuffmanData *)(right->data))->freq), huffman_data_dump);
     else
     {
       printf ("[%s,%d] Fail to get 2 min node from priority queue\n", __func__, __LINE__);
