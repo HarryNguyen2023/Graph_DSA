@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <time.h>
 #include "lib/graph.h"
 #include "lib/stack.h"
 #include "lib/queue.h"
@@ -11,10 +12,14 @@
 #include "lib/binary_tree.h"
 #include "lib/huffman_code.h"
 #include "lib/hash_table.h"
+#include "lib/sort.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
 #define MAX(A,B)            ((A) > (B)) ? A : B
+#define MIN_RAND            1
+#define MAX_RAND            100
+#define SORT_ARR_LEN        500
 
 void cirbuff_print_int (void *data)
 {
@@ -100,6 +105,22 @@ int huffman_coding_test (void)
   if (decoded_str)  free(decoded_str);
 
   return 0;
+}
+
+void measure_function_time_clock(void (*func)(void))
+{
+  clock_t start, end;
+  double cpu_time_used;
+
+  start = clock();
+  func();
+  end = clock();
+
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+  printf("CPU time used: %.6f seconds\n", cpu_time_used);
+  
+  return;
 }
 
 void reverse_string (char *str)
@@ -230,6 +251,160 @@ void lcs (char *str_1, char *str_2)
   return;
 }
 
+int rand_int (int min, int max)
+{
+  if (min >= max)
+  {
+    printf ("[%s,%d] Invalid input min %d must smaller than max",
+            __func__, __LINE__, min, max);
+    return -1;
+  }
+  return (rand() % (max - min + 1)) + min;
+}
+
+void generate_rand_array (int arr[], int size)
+{
+  int i;
+
+  if (! arr || ! size)
+    return;
+
+  for (i = 0; i < size; ++i)
+    arr[i] = rand_int (MIN_RAND, MAX_RAND);
+  return;
+}
+
+void bubble_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  bubble_sort (array, size);
+
+  sort_array_dump (array, size, "Bubble Sort");
+}
+
+void selection_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  selection_sort (array, size);
+
+  sort_array_dump (array, size, "Selection Sort");
+}
+
+void insertion_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  insertion_sort (array, size);
+
+  sort_array_dump (array, size, "Insertion Sort");
+}
+
+void count_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size, *out_arr = NULL;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  count_sort (array, size, &out_arr);
+
+  if (out_arr)
+    sort_array_dump (out_arr, size, "Count Sort");
+}
+
+void radix_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  radix_sort (array, size);
+
+  sort_array_dump (array, size, "Radix Sort");
+}
+
+void bucket_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  bucket_sort (array, size);
+
+  sort_array_dump (array, size, "Bucket Sort");
+}
+
+void heap_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  heap_sort (array, size);
+
+  sort_array_dump (array, size, "Heap Sort");
+}
+
+void shell_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  shell_sort (array, size);
+
+  sort_array_dump (array, size, "Shell Sort");
+}
+
+void merge_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  merge_sort (array, size);
+
+  sort_array_dump (array, size, "Merge Sort");
+}
+
+void quick_sort_test (void)
+{
+  int array[SORT_ARR_LEN] = {0};
+  int i, size;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+
+  quick_sort (array, size);
+
+  sort_array_dump (array, size, "Quick Sort");
+}
+
 int main (int argc, char** argv) 
 {
   Graph* graph = NULL;
@@ -282,9 +457,21 @@ int main (int argc, char** argv)
   huffman_coding_test();
 
   printf ("\n******* Longest Common Subsequent's Algorithm ******** \n");
-  char str1[] = "ACADB";
-  char str2[] = "CBDA";
+  char str1[] = "Giayeuminhchau";
+  char str2[] = "Giaminhchau";
   lcs(str1, str2);
+
+  printf ("\n**************** Sort Algorithms ***************** \n");
+  measure_function_time_clock (bubble_sort_test);
+  measure_function_time_clock (selection_sort_test);
+  measure_function_time_clock (insertion_sort_test);
+  measure_function_time_clock (count_sort_test);
+  measure_function_time_clock (radix_sort_test);
+  measure_function_time_clock (bucket_sort_test);
+  measure_function_time_clock (heap_sort_test);
+  measure_function_time_clock (shell_sort_test);
+  measure_function_time_clock (merge_sort_test);
+  measure_function_time_clock (quick_sort_test);
 
   return 0;
 }
