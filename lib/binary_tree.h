@@ -8,6 +8,7 @@ struct BinTreeNode
   BinTreeNode *left;
   BinTreeNode *right;
   void        *data;
+  int         key;
   void        (*bin_tree_node_dump) (void *);
 };
 
@@ -28,5 +29,6 @@ void bin_tree_inorder_traversal (BinTreeNode *root);
 void bin_tree_preorder_traversal (BinTreeNode *root);
 void bin_tree_postorder_traversal (BinTreeNode *root);
 int bin_tree_is_leaf_node (BinTreeNode *node);
+void bin_tree_print (BinTree *tree);
 
 #endif /* __BINARY_TREE_H__ */

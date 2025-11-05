@@ -139,3 +139,29 @@ int bin_tree_is_leaf_node (BinTreeNode *node)
 
   return (node->left == NULL && node->right == NULL);
 }
+
+void bin_tree_print_util (BinTreeNode *node, int count, int space)
+{
+  if (node == NULL)
+      return;
+
+  space += count;
+
+  bin_tree_print_util (node->right, count, space);
+
+  printf ("\n");
+  for (int i = count; i < space; i++)
+    printf (" ");
+  printf ("%d\n", node->key);
+
+  bin_tree_print_util (node->left, count, space);    
+}
+
+void bin_tree_print (BinTree *tree)
+{
+  if (! tree)
+    return;
+
+  printf ("Tree size: %d\n", tree->size);
+  bin_tree_print_util (tree->root, 15, 0);
+}

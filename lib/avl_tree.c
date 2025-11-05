@@ -232,9 +232,6 @@ AvlTreeNode* avl_tree_insert (AvlTree *tree, int key, void *data)
   if (! tree)
     return NULL;
 
-  if (key == 79)
-    printf ("\n");
-
   new_node = avl_tree_insert_util (tree->root, key, data);
   if (new_node)
   {
@@ -245,30 +242,9 @@ AvlTreeNode* avl_tree_insert (AvlTree *tree, int key, void *data)
   return new_node;
 }
 
-void avl_tree_print_util (AvlTreeNode *node, int count, int space)
-{
-  if (node == NULL)
-      return;
-
-  space += count;
-
-  avl_tree_print_util (node->right, count, space);
-
-  printf ("\n");
-  for (int i = count; i < space; i++)
-    printf (" ");
-  printf ("%d\n", node->key);
-
-  avl_tree_print_util (node->left, count, space);    
-}
-
 void avl_tree_print (AvlTree *tree)
 {
-  if (! tree)
-    return;
-
-  printf ("Tree size: %d\n", tree->size);
-  avl_tree_print_util (tree->root, 15, 0);
+  bin_tree_print ((BinTree *)tree);
 }
 
 AvlTreeNode* avl_tree_get_min_successor (AvlTreeNode *node)
