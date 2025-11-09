@@ -446,7 +446,7 @@ void rb_tree_test (void)
 {
   RedBlackTree* tree = NULL;
   RedBlackTreeNode* node = NULL;
-  int array[17] = {0};
+  int array[19] = {0};
   int i, size;
 
   size = sizeof (array) / sizeof (int);
@@ -468,10 +468,10 @@ void rb_tree_test (void)
   node = rb_tree_node_search (tree, array[13]);
   printf ("Node %d is %s in the tree\n", array[13], (node) ? "" : "not");
 
-  // for (i = 0; i < size; i += 4)
-  //   avl_tree_remove (tree, array[i]);
+  for (i = 0; i < size; i += 3)
+    rb_tree_remove (tree, array[i]);
 
-  // avl_tree_print (tree);
+  rb_tree_print (tree);
 
   rb_tree_delete (tree);
   return;
@@ -546,7 +546,7 @@ int main (int argc, char** argv)
   // measure_function_time_clock (quick_sort_test);
 
   printf ("\n****************** AVL Tree ******************* \n");
-  // avl_tree_test ();
+  avl_tree_test ();
 
   printf ("\n*************** Red Black Tree **************** \n");
   rb_tree_test ();

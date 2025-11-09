@@ -30,5 +30,6 @@ void rb_tree_postorder_traversal (RedBlackTreeNode *root);
 void rb_tree_print (RedBlackTree *tree);
 RedBlackTreeNode *rb_tree_node_search (RedBlackTree *tree, int key);
 RedBlackTreeNode* rb_tree_insert (RedBlackTree *tree, int key, void *data);
+void rb_tree_remove (RedBlackTree *tree, int key);
 
 #endif /* __RED_BLACK_TREE_H__ */

@@ -346,3 +346,271 @@ RedBlackTreeNode* rb_tree_insert (RedBlackTree *tree, int key, void *data)
   }
   return new_node;
 }
+
+RedBlackTreeNode* rb_tree_get_min_successor (RedBlackTreeNode *node)
+{
+  if (! node)
+    return NULL;
+
+  while (node->left)
+    node = node->left;
+  return node;
+}
+
+void rb_tree_node_swap (RedBlackTreeNode *node_1, RedBlackTreeNode *node_2)
+{
+  int key;
+  void *data;
+
+  if (! node_1 || ! node_2)
+    return;
+
+  key           = node_1->key;
+  data          = node_1->info;
+  node_1->key   = node_2->key;
+  node_1->info  = node_2->info;
+  node_2->key   = key;
+  node_2->info  = data;
+}
+
+void rb_tree_transplant(RedBlackTreeNode **root, RedBlackTreeNode* u, RedBlackTreeNode* v)
+{
+  if (!u)
+    return;
+
+  if (u->parent == NULL)
+    *root = v;
+  else if (u == u->parent->left)
+    u->parent->left = v;
+  else
+    u->parent->right = v;
+
+  if (v)
+    v->parent = u->parent;
+}
+
+void rb_tree_remove_balance_fix (RedBlackTreeNode **root, RedBlackTreeNode* node)
+{
+  RedBlackTreeNode* sib = NULL, *parent = NULL;
+
+  if (! node)
+    return;
+
+  while (node != *root && node->color == BLACK_COLOR)
+  {
+    if (node == node->parent->left)
+    {
+      sib = node->parent->right;
+      if (sib->color == RED_COLOR)
+      {
+        sib->color = BLACK_COLOR;
+        sib->parent->color = RED_COLOR;
+        if (parent = sib->parent->parent)
+        {
+          if (sib->parent == parent->left)
+            parent->left = rb_tree_rotate_left (sib->parent);
+          else
+            parent->right = rb_tree_rotate_left (sib->parent);
+        }
+        else
+        {
+          *root = rb_tree_rotate_left (sib->parent);
+        }
+
+        sib = node->parent->right;
+        if (sib->left && sib->left->color == BLACK_COLOR
+            && sib->right && sib->right->color == BLACK_COLOR)
+        {
+          sib->color = RED_COLOR;
+          node = node->parent;
+        }
+        else if (sib->right && sib->right->color == BLACK_COLOR)
+        {
+          if (sib->left)
+            sib->left->color = BLACK_COLOR;
+          sib->color = RED_COLOR;
+          if (parent = sib->parent)
+          {
+            if (sib == parent->left)
+              parent->left = rb_tree_rotate_right (sib);
+            else
+              parent->right = rb_tree_rotate_right (sib);
+          }
+          else
+          {
+            *root = rb_tree_rotate_right (sib);
+          }
+        }
+        else
+        {
+          sib->color = sib->parent->color;
+          if (node->parent->parent)
+            node->parent->parent->color = BLACK_COLOR;
+          if (sib->right)
+            sib->right->color = BLACK_COLOR;
+          if (parent = node->parent->parent)
+          {
+            if (node->parent == parent->left)
+              parent->left = rb_tree_rotate_left (node->parent);
+            else
+              parent->right = rb_tree_rotate_left (node->parent);
+          }
+          else
+          {
+            *root = rb_tree_rotate_left (node->parent);
+          }
+          node = *root;
+        }
+      }
+    }
+    else
+    {
+      sib = node->parent->left;
+      if (sib->color == RED_COLOR)
+      {
+        sib->color = BLACK_COLOR;
+        sib->parent->color = RED_COLOR;
+        if (parent = sib->parent->parent)
+        {
+          if (sib->parent == parent->left)
+            parent->left = rb_tree_rotate_right (sib->parent);
+          else
+            parent->right = rb_tree_rotate_right (sib->parent);
+        }
+        else
+        {
+          *root = rb_tree_rotate_right (sib->parent);
+        }
+
+        sib = node->parent->left;
+        if (sib->left && sib->left->color == BLACK_COLOR
+            && sib->right && sib->right->color == BLACK_COLOR)
+        {
+          sib->color = RED_COLOR;
+          node = node->parent;
+        }
+        else if (sib->right && sib->right->color == BLACK_COLOR)
+        {
+          if (sib->right)
+            sib->right->color = BLACK_COLOR;
+          sib->color = RED_COLOR;
+          if (parent = sib->parent)
+          {
+            if (sib == parent->left)
+              parent->left = rb_tree_rotate_left (sib);
+            else
+              parent->right = rb_tree_rotate_left (sib);
+          }
+          else
+          {
+            *root = rb_tree_rotate_left (sib);
+          }
+        }
+        else
+        {
+          sib->color = sib->parent->color;
+          if (node->parent->parent)
+            node->parent->parent->color = BLACK_COLOR;
+          if (sib->left)
+            sib->left->color = BLACK_COLOR;
+          if (parent = node->parent->parent)
+          {
+            if (node->parent == parent->left)
+              parent->left = rb_tree_rotate_right (node->parent);
+            else
+              parent->right = rb_tree_rotate_right (node->parent);
+          }
+          else
+          {
+            *root = rb_tree_rotate_right (node->parent);
+          }
+          node = *root;
+        }
+      }
+    }
+  }
+  if (*root)
+    (*root)->color = BLACK_COLOR;
+
+  return;
+}
+
+int rb_tree_remove_util (RedBlackTreeNode **root, RedBlackTreeNode* node, int key)
+{
+  RedBlackTreeNode* temp = NULL, *min_succ = NULL, *rep_node = NULL;
+  unsigned char     orig_color;
+
+  if (! *root || ! node)
+    return -1;
+
+  temp = node;
+  while (temp)
+  {
+    if (key < temp->key)
+      temp = temp->left;
+    else if (key > temp->key)
+      temp = temp->right;
+    else
+      break;
+  }
+
+  if (! temp || temp->key != key)
+  {
+    printf ("[%s,%d] Node %d is not found in the Red Black Tree\n", __func__, __LINE__, key);
+    return -1;
+  }
+
+  if (! temp->parent
+      && rb_tree_is_leaf_node (temp))
+  {
+    rb_tree_node_delete (temp);
+    *root = NULL;
+    return 0;
+  }
+
+  orig_color = temp->color;
+  if (temp->left == NULL)
+  {
+    rep_node = temp->right;
+    rb_tree_transplant (root, temp, temp->right);
+    rb_tree_node_delete (temp);
+  }
+  else if (temp->right == NULL)
+  {
+    rep_node = temp->left;
+    rb_tree_transplant (root, temp, temp->left);
+    rb_tree_node_delete (temp);
+  }
+  else
+  {
+    min_succ = rb_tree_get_min_successor (temp->right);
+    if (! min_succ)
+    {
+      printf ("[%s,%d] Fail to find minimum successor of node %d\n", __func__, __LINE__, temp->key);
+      return -1;
+    }
+
+    rb_tree_node_swap (temp, min_succ);
+    return rb_tree_remove_util (root, temp->right, key);
+  }
+
+  if (orig_color == BLACK_COLOR)
+    rb_tree_remove_balance_fix (root, rep_node);
+
+  return 0;
+}
+
+void rb_tree_remove (RedBlackTree *tree, int key)
+{
+  RedBlackTreeNode* node = NULL;
+  int rv;
+
+  if (! tree)
+    return;
+
+  rv = rb_tree_remove_util (&(tree->root), tree->root, key);
+  if (rv == 0)
+    tree->size--;
+
+  return;
+}
