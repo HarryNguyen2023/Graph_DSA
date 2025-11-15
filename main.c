@@ -15,6 +15,7 @@
 #include "lib/sort.h"
 #include "lib/avl_tree.h"
 #include "lib/red_black_tree.h"
+#include "lib/b_tree.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
@@ -477,6 +478,42 @@ void rb_tree_test (void)
   return;
 }
 
+void b_tree_test (void)
+{
+  BTree* tree = NULL;
+  BTreeNode* node = NULL;
+  int array[17] = {0};
+  int i, size;
+  int t = 2;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+  sort_array_dump (array, size, "Initial generat");
+
+  tree = b_tree_create (t);
+  if (! tree)
+  {
+    printf ("[%s,%d] Fail to create B tree\n", __func__, __LINE__);
+    return;
+  }
+
+  for (i = 0; i < size; ++i)
+    b_tree_insert (tree, array[i], NULL);
+
+  btree_print_2d (tree);
+
+  node = b_tree_search (tree, array[2], &i);
+  printf ("Node %d is %s in the tree\n", array[2], (node && i >= 0) ? "" : "not");
+
+  // for (i = 0; i < size; i += 3)
+  //   rb_tree_remove (tree, array[i]);
+
+  // rb_tree_print (tree);
+
+  // b_tree_delete (tree);
+  return;
+}
+
 int main (int argc, char** argv) 
 {
   // Graph* graph = NULL;
@@ -546,10 +583,13 @@ int main (int argc, char** argv)
   // measure_function_time_clock (quick_sort_test);
 
   printf ("\n****************** AVL Tree ******************* \n");
-  avl_tree_test ();
+  // avl_tree_test ();
 
   printf ("\n*************** Red Black Tree **************** \n");
-  rb_tree_test ();
+  // rb_tree_test ();
+
+  printf ("\n****************** B Tree ********************* \n");
+  b_tree_test ();
 
   return 0;
 }
