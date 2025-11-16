@@ -4,6 +4,8 @@
 #include "queue.h"
 #include "b_tree.h"
 
+BTreeNode* b_tree_remove_until (BTreeNode **root, BTreeNode *node, int t, int key);
+
 BTreeNode* b_tree_node_create (int t)
 {
   BTreeNode* new_node = NULL;
@@ -59,12 +61,12 @@ void btree_node_delete (BTreeNode *node)
   if (! node)
     return;
 
-  if (node->key)  free (node->key);
-  node->key = NULL;
-  if (*(node->childs)) free (*(node->childs));
-  *(node->childs) = NULL;
-  if (*(node->data))  free (*(node->data));
-  *(node->data) = NULL;
+  // if (node->key)  free (node->key);
+  // node->key = NULL;
+  // if (*(node->childs)) free (*(node->childs));
+  // *(node->childs) = NULL;
+  // if (*(node->data))  free (*(node->data));
+  // *(node->data) = NULL;
   free (node);
   node = NULL;
 }
@@ -191,14 +193,17 @@ BTreeNode *b_tree_insert_node (BTreeNode *node, int key, void *data, BTreeNode *
   {
     node->key[j] = node->key[j - 1];
     node->data[j] = node->data[j - 1];
-    node->childs[j + 1] = node->childs[j];
+    if (child)
+      node->childs[j + 1] = node->childs[j];
   }
 
   node->key[i] = key;
   node->data[i] = data;
-  node->childs[i + 1] = child;
   if (child)
+  {
+    node->childs[i + 1] = child;
     child->parent = node;
+  }
   node->count++;
 
   return node;
@@ -318,49 +323,45 @@ BTreeQueueNode *btree_queue_node_create (BTreeNode *tree_node, int level)
   return node;
 }
 
-void btree_print_2d_util (BTreeNode *root)
+void b_tree_print_2d_util (BTreeNode *root)
 {
   Queue *q = NULL;
   BTreeQueueNode *qn = NULL;
   BTreeNode *node = NULL;
-  int level = 0, cur_level = 0;;
+  int level = 0, cur_level = 0, height = 0;;
 
   if (! root)
-  { printf("<empty tree>\n");
+  { printf("B Tree is empty\n");
     return;
   }
 
-  /* compute height */
-  int height = 0;
+  /* Compute the height of the B Tree */
+  q = queue_create ();
+  if (! q) return;
+
+  queue_enqueue (q, btree_queue_node_create (root, 0));
+  while (! queue_is_empty (q))
   {
-    q = queue_create ();
-    if (! q) return;
-
-    queue_enqueue (q, btree_queue_node_create (root, 0));
-    while (! queue_is_empty (q))
+    queue_dequeue (q, (void **)&qn);
+    if (! qn)
+      continue;
+    level = qn->level;
+    node = qn->node;
+    if (level > height) height = level;
+    if (! node->is_leaf)
     {
-      queue_dequeue (q, (void **)&qn);
-      if (! qn)
-        continue;
-      level = qn->level;
-      node = qn->node;
-      if (level > height) height = level;
-      if (! node->is_leaf)
-      {
-        for (int i = 0; i <= node->count; ++i)
-          if (node->childs[i])
-            queue_enqueue (q, btree_queue_node_create(node->childs[i], level + 1));
-      }
-
-      free (qn);  qn = NULL;
+      for (int i = 0; i <= node->count; ++i)
+        if (node->childs[i])
+          queue_enqueue (q, btree_queue_node_create(node->childs[i], level + 1));
     }
-    queue_delete (q); q = NULL;
-  }
 
-  /* print level by level */
+    free (qn);  qn = NULL;
+  }
+  queue_delete (q); q = NULL;
+
+  /* Print the tree level by level */
   q = queue_create ();
   queue_enqueue (q, btree_queue_node_create (root, 0));
-
   while (! queue_is_empty(q))
   {
     queue_dequeue (q, (void **)&qn);
@@ -375,17 +376,16 @@ void btree_print_2d_util (BTreeNode *root)
       cur_level = level;
     }
 
-    /* indent according to height */
+    /* Indent according to height */
     int indent = (height - level) * 10;
     printf("%*s", indent, "");
 
-    /* print keys */
     for (int i = 0; i < node->count; ++i) {
       printf("%d ", node->key[i]);
     }
-    printf("  ");   /* small gap before next node */
+    printf("  ");
 
-    /* enqueue children */
+    /* Enqueue children */
     if (! node->is_leaf) {
       for (int i = 0; i <= node->count; ++i)
         if (node->childs[i])
@@ -400,10 +400,353 @@ void btree_print_2d_util (BTreeNode *root)
   return;
 }
 
-void btree_print_2d (BTree *tree)
+void b_tree_print_2d (BTree *tree)
 {
   if (! tree || ! tree->root)
     return;
 
-  btree_print_2d_util (tree->root);
+  b_tree_print_2d_util (tree->root);
+}
+
+BTreeNode* b_tree_get_inorder_succ (BTreeNode *node, int idx)
+{
+  BTreeNode* succ = NULL;
+
+  if (! node)
+    return NULL;
+
+  if (idx < 0 && idx >= node->count)
+  {
+    printf ("[%s,%d] Invalid index range %d\n", __func__, __LINE__, idx);
+    return NULL;
+  }
+
+  succ = node->childs[idx + 1];
+  while (! succ->is_leaf)
+    succ = succ->childs[0];
+
+  return succ;
+}
+
+BTreeNode* b_tree_get_inorder_pred (BTreeNode *node, int idx)
+{
+  BTreeNode* pred = NULL;
+
+  if (! node)
+    return NULL;
+
+  if (idx < 0 && idx >= node->count)
+  {
+    printf ("[%s,%d] Invalid index range %d\n", __func__, __LINE__, idx);
+    return NULL;
+  }
+
+  pred = node->childs[idx];
+  while (! pred->is_leaf)
+    pred = pred->childs[pred->count];
+
+  return pred;
+}
+
+void b_tree_remove_node (BTreeNode *node, int index)
+{
+  int i;
+
+  if (! node || index < 0 || index >= node->count)
+    return;
+
+  for (i = index; i < node->count - 1; ++i)
+  {
+    node->key[i] = node->key[i + 1];
+    node->data[i] = node->data[i + 1];
+  }
+
+  node->key[node->count - 1] = 0;
+  node->data[node->count - 1] = NULL;
+  node->count--;
+  return;
+}
+
+int b_tree_borrow_from_left_sib (BTreeNode *node, int t)
+{
+  BTreeNode *sib = NULL, *parent = NULL;
+  int i = 0, ret = 0;
+
+  parent = node->parent;
+  if (! parent)
+    return -1;
+
+  while (i <= parent->count)
+  {
+    if (parent->childs[i] == node)
+      break;
+    i++;
+  }
+
+  if (i == 0 || i > parent->count)
+    return -1;
+
+  sib = parent->childs[i - 1];
+  if (sib->count <= t)
+    return -1;
+
+  /* Move the parent key down to the current node */
+  b_tree_insert_node (node, parent->key[i - 1], parent->data[i - 1], NULL);
+
+  /* Put the rightmost key of the left sibling to the parent */
+  b_tree_insert_node (parent, sib->key[sib->count - 1], sib->data[sib->count - 1], NULL);
+  b_tree_remove_node (sib, sib->count - 1);
+
+  b_tree_remove_node (parent, i);
+
+  return 0;
+}
+
+int b_tree_borrow_from_right_sib (BTreeNode *node, int t)
+{
+  BTreeNode *sib = NULL, *parent = NULL;
+  int i = 0, ret = 0;
+
+  parent = node->parent;
+  if (! parent)
+    return -1;
+
+  while (i < parent->count)
+  {
+    if (parent->childs[i] == node)
+      break;
+    i++;
+  }
+
+  if (i >= parent->count)
+    return -1;
+
+  sib = parent->childs[i + 1];
+  if (sib->count <= t)
+    return -1;
+
+  /* Move the parent key down to the current node */
+  b_tree_insert_node (node, parent->key[i], parent->data[i], NULL);
+
+  /* Put the leftmost key of the right sibling to the parent */
+  b_tree_insert_node (parent, sib->key[0], sib->data[0], NULL);
+  b_tree_remove_node (sib, 0);
+
+  b_tree_remove_node (parent, i);
+
+  return 0;
+}
+
+BTreeNode* b_tree_merge_node (BTreeNode* left, BTreeNode *right)
+{
+  int i = 0;
+
+  if (! left || ! right)
+    return NULL;
+
+  for (i = 0; i < right->count; ++i)
+  {
+    left->key[i + left->count] = right->key[i];
+    left->data[i + left->count] = right->data[i];
+    /* Merge children ? */
+  }
+  left->count += right->count;
+
+  btree_node_delete (right);
+  return left;
+}
+
+void b_tree_node_fill (BTreeNode **root, BTreeNode *node)
+{
+  int i;
+  BTreeNode *parent = NULL, *sib = NULL, *temp = NULL;
+
+  parent = node->parent;
+  if (! parent)
+    return;
+
+  sib = (node == parent->childs[0]) ?  \
+          parent->childs[1] : parent->childs[0];
+
+  if (node == parent->childs[0])
+  {
+    for (i = 0; i <= sib->count; ++i)
+    {
+      node->childs[i + node->count + 1] = sib->childs[i];
+      if (sib->childs[i])
+        sib->childs[i]->parent = node;
+    }
+    temp = b_tree_merge_node (node, sib);
+  }
+  else
+  {
+    for (i = 0; i <= node->count; ++i)
+    {
+      sib->childs[i + sib->count + 1] = node->childs[i];
+      if (node->childs[i])
+        node->childs[i]->parent = sib;
+    }
+    temp = b_tree_merge_node (sib, node);
+  }
+
+  for (i = 0; i < parent->count; ++i)
+    b_tree_insert_node (temp, parent->key[i], parent->data[i], NULL);
+
+  *root = temp;
+}
+
+void b_tree_merge_from_parent (BTreeNode **root, int t, BTreeNode *node)
+{
+  int i = 0, j;
+  BTreeNode *temp = NULL, *parent = NULL;
+
+  if (! node || ! (parent = node->parent))
+    return;
+
+  /* Case deleted node is the first child */
+  if (node == parent->childs[0])
+  {
+    b_tree_insert_node (node, parent->key[0], parent->data[0], NULL);
+
+    b_tree_remove_node (parent, 0);
+
+    temp = b_tree_merge_node (node, parent->childs[1]);
+    parent->childs[0] = temp;
+    for (i = 1; i <= parent->count; ++i)
+      parent->childs[i] = parent->childs[i + 1];
+  }
+  else
+  {
+    while (i < parent->count)
+    {
+      if (parent->childs[i] == node)
+        break;
+      i++;
+    }
+
+    if (i >= parent->count)
+      return;
+
+    b_tree_insert_node (node, parent->key[i - 1], parent->data[i - 1], NULL);
+
+    b_tree_remove_node (parent, i - 1);
+
+    temp = b_tree_merge_node (parent->childs[i - 1], node);
+    parent->childs[i - 1] = temp;
+    for (j = i; j <= parent->count; ++j)
+      parent->childs[j] = parent->childs[j + 1];
+  }
+
+  if (parent->count < t)
+  {
+    b_tree_node_fill (root, parent);
+  }
+
+  return;
+}
+
+void b_tree_remove_from_leaf (BTreeNode **root, BTreeNode *node, int t, int index)
+{
+  int ret = 0;
+
+  if (! node || ! node->is_leaf
+      || index < 0 || index >= node->count)
+    return;
+
+  b_tree_remove_node (node, index);
+  if (node->count < t)
+  {
+    ret = b_tree_borrow_from_left_sib (node, t);
+    if (ret != 0)
+    {
+      ret = b_tree_borrow_from_right_sib (node, t);
+      if (ret != 0)
+      {
+        b_tree_merge_from_parent (root, t, node);
+      }
+    }
+  }
+
+  return;
+}
+
+void b_tree_remove_from_non_leaf (BTreeNode **root, BTreeNode *node, int t, int index)
+{
+  int i;
+  BTreeNode *temp = NULL, *sib = NULL, *parent = NULL;
+
+  if (! node || node->is_leaf
+      || index < 0 || index >= node->count)
+    return;
+
+  if (node->childs[index] && node->childs[index]->count > t)
+  {
+    temp = b_tree_get_inorder_pred (node, index);
+    if (temp)
+    {
+      b_tree_remove_node (node, index);
+      b_tree_insert_node (node, temp->key[temp->count - 1], temp->data[temp->count - 1], NULL);
+      b_tree_remove_until (root, node->childs[index], t, temp->key[temp->count - 1]);
+    }
+  }
+  else if (node->childs[index + 1] && node->childs[index + 1]->count > t)
+  {
+    temp = b_tree_get_inorder_succ (node, index);
+    if (temp)
+    {
+      b_tree_remove_node (node, index);
+      b_tree_insert_node (node, temp->key[0], temp->data[0], NULL);
+      b_tree_remove_until (root, node->childs[index + 1], t, temp->key[0]);
+    }
+  }
+  else
+  {
+    temp = b_tree_merge_node (node->childs[index], node->childs[index + 1]);
+    if (temp)
+    {
+      for (i = index + 1; i <= node->count - 1; ++i)
+        node->childs[i] = node->childs[i + 1];
+    }
+    b_tree_remove_node (node, index);
+    if (node->count < t)
+    {
+      b_tree_node_fill (root, node);
+    }
+  }
+
+  return;
+}
+
+BTreeNode* b_tree_remove_until (BTreeNode **root, BTreeNode *node, int t, int key)
+{
+  BTreeNode* del_node = NULL;
+  int del_key_index = -1;
+
+  if (! node)
+    return NULL;
+
+  del_node = b_tree_search_util (node, key, &del_key_index);
+  if (! del_node || del_key_index < 0)
+  {
+    printf ("Key %d does not exists in B Tree\n", key);
+    return NULL;
+  }
+
+  if (del_node->is_leaf)
+    b_tree_remove_from_leaf (root, del_node, t, del_key_index);
+  else
+    b_tree_remove_from_non_leaf (root, del_node, t, del_key_index);
+
+  return node;
+}
+
+int b_tree_remove (BTree *tree, int key)
+{
+  if (! tree || ! tree->root)
+    return -1;
+
+  if (b_tree_remove_until (&(tree->root), tree->root, tree->t, key))
+    tree->size--;
+
+  return 0;
 }

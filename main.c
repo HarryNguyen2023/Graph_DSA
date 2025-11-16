@@ -482,8 +482,8 @@ void b_tree_test (void)
 {
   BTree* tree = NULL;
   BTreeNode* node = NULL;
-  int array[17] = {0};
-  int i, size;
+  int array[26] = {0};
+  int i, size, rand;
   int t = 2;
 
   size = sizeof (array) / sizeof (int);
@@ -500,17 +500,21 @@ void b_tree_test (void)
   for (i = 0; i < size; ++i)
     b_tree_insert (tree, array[i], NULL);
 
-  btree_print_2d (tree);
+  b_tree_print_2d (tree);
 
-  node = b_tree_search (tree, array[2], &i);
-  printf ("Node %d is %s in the tree\n", array[2], (node && i >= 0) ? "" : "not");
+  node = b_tree_search (tree, array[17], &i);
+  printf ("Node %d is %s in the tree\n", array[17], (node && i >= 0) ? "" : "not");
 
-  // for (i = 0; i < size; i += 3)
-  //   rb_tree_remove (tree, array[i]);
+  generate_rand_array (&rand, 1);
+  node = b_tree_search (tree, rand, &i);
+  printf ("Node %d is %s in the tree\n", rand, (node && i >= 0) ? "" : "not");
 
-  // rb_tree_print (tree);
+  for (i = 0; i < size; i += 2)
+    b_tree_remove (tree, array[i]);
 
-  // b_tree_delete (tree);
+  b_tree_print_2d (tree);
+
+  b_tree_delete (tree);
   return;
 }
 

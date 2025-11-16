@@ -30,6 +30,7 @@ BTree* b_tree_create (int t);
 void b_tree_delete (BTree *tree);
 BTreeNode* b_tree_search (BTree *tree, int key, int *index);
 BTreeNode* b_tree_insert (BTree *tree, int key, void *data);
-void btree_print_2d (BTree *tree);
+void b_tree_print_2d (BTree *tree);
+int b_tree_remove (BTree *tree, int key);
 
 #endif /* __B_TREE_H__ */
