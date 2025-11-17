@@ -16,6 +16,7 @@
 #include "lib/avl_tree.h"
 #include "lib/red_black_tree.h"
 #include "lib/b_tree.h"
+#include "lib/b_plus_tree.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
@@ -518,6 +519,46 @@ void b_tree_test (void)
   return;
 }
 
+void bp_tree_test (void)
+{
+  BPlusTree* tree = NULL;
+  BPlusTreeNode* node = NULL;
+  int array[37] = {0};
+  int i, size, rand;
+  int t = 2;
+
+  size = sizeof (array) / sizeof (int);
+  generate_rand_array (array, size);
+  sort_array_dump (array, size, "Initial generat");
+
+  tree = bp_tree_create (t);
+  if (! tree)
+  {
+    printf ("[%s,%d] Fail to create B+ tree\n", __func__, __LINE__);
+    return;
+  }
+
+  for (i = 0; i < size; ++i)
+    bp_tree_insert (tree, array[i], NULL);
+
+  bp_tree_print_2d (tree);
+
+  node = bp_tree_search (tree, array[17], &i);
+  printf ("Node %d is%s in the tree\n", array[17], (node && i >= 0) ? "" : " not");
+
+  generate_rand_array (&rand, 1);
+  node = bp_tree_search (tree, rand, &i);
+  printf ("Node %d is%s in the tree\n", rand, (node && i >= 0) ? "" : " not");
+
+  // for (i = 0; i < size; i += 2)
+  //   bp_tree_remove (tree, array[i]);
+
+  // bp_tree_print_2d (tree);
+
+  bp_tree_delete (tree);
+  return;
+}
+
 int main (int argc, char** argv) 
 {
   // Graph* graph = NULL;
@@ -593,7 +634,10 @@ int main (int argc, char** argv)
   // rb_tree_test ();
 
   printf ("\n****************** B Tree ********************* \n");
-  b_tree_test ();
+  // b_tree_test ();
+
+  printf ("\n***************** B+ Tree ********************* \n");
+  bp_tree_test ();
 
   return 0;
 }

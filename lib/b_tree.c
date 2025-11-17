@@ -56,7 +56,7 @@ ERR_EXIT:
   return NULL;
 }
 
-void btree_node_delete (BTreeNode *node)
+void b_tree_node_delete (BTreeNode *node)
 {
   if (! node)
     return;
@@ -96,14 +96,14 @@ void b_tree_delete_util (BTreeNode *root)
     return;
 
   if (root->is_leaf)
-    return btree_node_delete (root);
+    return b_tree_node_delete (root);
 
   for (i = 0; i < root->count + 1; ++i)
   {
     b_tree_delete_util (root->childs[i]);
   }
 
-  btree_node_delete (root);
+  b_tree_node_delete (root);
 }
 
 void b_tree_delete (BTree *tree)
@@ -242,8 +242,8 @@ BTreeNode* b_tree_split_childs (BTreeNode **root, BTreeNode *node, int t)
 
   median = node->key[t];
   median_data = node->data[t];
-  node->key[i] = 0;
-  node->data[i] = NULL;
+  node->key[t] = 0;
+  node->data[t] = NULL;
   node->count--;
   if (! node->parent)
   {
@@ -269,9 +269,6 @@ BTreeNode* b_tree_insert_util (BTreeNode **root, BTreeNode *node, int t, int key
 {
   BTreeNode* new_node = NULL;
   int i = 0, j = 0;
-
-  if (key == 59)
-    printf("\n");
 
   if (! node)
     return b_tree_insert_first_node (t, key, data, NULL, NULL);
@@ -552,7 +549,7 @@ BTreeNode* b_tree_merge_node (BTreeNode* left, BTreeNode *right)
   }
   left->count += right->count;
 
-  btree_node_delete (right);
+  b_tree_node_delete (right);
   return left;
 }
 

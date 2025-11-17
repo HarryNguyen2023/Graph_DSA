@@ -22,8 +22,8 @@ typedef struct BTree
 
 typedef struct BTreeQueueNode
 {
-  BTreeNode *node;
   int       level;
+  BTreeNode *node;
 } BTreeQueueNode;
 
 BTree* b_tree_create (int t);
