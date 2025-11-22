@@ -545,7 +545,6 @@ BTreeNode* b_tree_merge_node (BTreeNode* left, BTreeNode *right)
   {
     left->key[i + left->count] = right->key[i];
     left->data[i + left->count] = right->data[i];
-    /* Merge children ? */
   }
   left->count += right->count;
 
@@ -600,7 +599,7 @@ void b_tree_merge_from_parent (BTreeNode **root, int t, BTreeNode *node)
   if (! node || ! (parent = node->parent))
     return;
 
-  /* Case deleted node is the first child */
+  /* Case deleted node is in the first child */
   if (node == parent->childs[0])
   {
     b_tree_insert_node (node, parent->key[0], parent->data[0], NULL);

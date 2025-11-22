@@ -523,7 +523,7 @@ void bp_tree_test (void)
 {
   BPlusTree* tree = NULL;
   BPlusTreeNode* node = NULL;
-  int array[37] = {0};
+  int array[35] = {0};
   int i, size, rand;
   int t = 2;
 
@@ -550,10 +550,10 @@ void bp_tree_test (void)
   node = bp_tree_search (tree, rand, &i);
   printf ("Node %d is%s in the tree\n", rand, (node && i >= 0) ? "" : " not");
 
-  // for (i = 0; i < size; i += 2)
-  //   bp_tree_remove (tree, array[i]);
+  for (i = 1; i < size; i += 2)
+    bp_tree_remove (tree, array[i]);
 
-  // bp_tree_print_2d (tree);
+  bp_tree_print_2d (tree);
 
   bp_tree_delete (tree);
   return;
