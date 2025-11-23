@@ -80,7 +80,7 @@ int avl_tree_get_height (AvlTreeNode *node)
   return (node->height);
 }
 
-AvlTreeNode* avl_tree_rotate_left (AvlTreeNode *x)
+AvlTreeNode* avl_tree_rotate_left (AvlTreeNode **root, AvlTreeNode *x)
 {
   AvlTreeNode *y = NULL;
 
@@ -98,10 +98,14 @@ AvlTreeNode* avl_tree_rotate_left (AvlTreeNode *x)
     x->height = MAX (avl_tree_get_height (x->left), avl_tree_get_height(x->right)) + 1;
   if (y)
     y->height = MAX (avl_tree_get_height (y->left), avl_tree_get_height(y->right)) + 1;
+
+  if (x == *root)
+    *root = y;
+
   return y;
 }
 
-AvlTreeNode* avl_tree_rotate_right (AvlTreeNode *x)
+AvlTreeNode* avl_tree_rotate_right (AvlTreeNode **root, AvlTreeNode *x)
 {
   AvlTreeNode *y = NULL;
 
@@ -119,6 +123,10 @@ AvlTreeNode* avl_tree_rotate_right (AvlTreeNode *x)
     x->height = MAX (avl_tree_get_height (x->left), avl_tree_get_height(x->right)) + 1;
   if (y)
     y->height = MAX (avl_tree_get_height (y->left), avl_tree_get_height(y->right)) + 1;
+
+  if (x == *root)
+    *root = y;
+
   return y;
 }
 
@@ -150,27 +158,27 @@ int avl_tree_get_balance (AvlTreeNode *root)
   return (avl_tree_get_height (root->left) - avl_tree_get_height(root->right));
 }
 
-AvlTreeNode* avl_tree_insert_util (AvlTreeNode *root, int key, void *data)
+AvlTreeNode* avl_tree_insert_util (AvlTreeNode **root, AvlTreeNode *node, int key, void *data)
 {
   int balance = 0;
 
-  if (! root)
+  if (! node)
     return avl_tree_node_create (key, data);
 
-  if (key < root->key)
+  if (key < node->key)
   {
-    root->left = avl_tree_insert_util (root->left, key, data);
+    node->left = avl_tree_insert_util (root, node->left, key, data);
   }
-  else if (key > root->key)
+  else if (key > node->key)
   {
-    root->right = avl_tree_insert_util (root->right, key, data);
+    node->right = avl_tree_insert_util (root, node->right, key, data);
   }
   else
-    return root;
+    return node;
 
   /* Update node height */
-  root->height = MAX(avl_tree_get_height (root->left), avl_tree_get_height(root->right)) + 1;
-  balance      = avl_tree_get_balance (root);
+  node->height = MAX(avl_tree_get_height (node->left), avl_tree_get_height(node->right)) + 1;
+  balance      = avl_tree_get_balance (node);
 
   /* 
    *       p
@@ -180,8 +188,8 @@ AvlTreeNode* avl_tree_insert_util (AvlTreeNode *root, int key, void *data)
    *  y
    */
   if (balance > 1
-      && root->left && key < root->left->key)
-    return avl_tree_rotate_right (root);
+      && node->left && key < node->left->key)
+    return avl_tree_rotate_right (root, node);
 
   /* 
    * p
@@ -191,8 +199,8 @@ AvlTreeNode* avl_tree_insert_util (AvlTreeNode *root, int key, void *data)
    *     y
    */
   if (balance < -1
-      && root->right && key > root->right->key)
-    return avl_tree_rotate_left (root);
+      && node->right && key > node->right->key)
+    return avl_tree_rotate_left (root, node);
 
   /* 
    *       p
@@ -202,10 +210,10 @@ AvlTreeNode* avl_tree_insert_util (AvlTreeNode *root, int key, void *data)
    *      y
    */
   if (balance > 1
-      && root->left && key > root->left->key)
+      && node->left && key > node->left->key)
   {
-    root->left = avl_tree_rotate_left (root->left);
-    return avl_tree_rotate_right (root);
+    node->left = avl_tree_rotate_left (root, node->left);
+    return avl_tree_rotate_right (root, node);
   }
 
   /* 
@@ -216,13 +224,13 @@ AvlTreeNode* avl_tree_insert_util (AvlTreeNode *root, int key, void *data)
    *   y
    */
   if (balance < -1
-      && root->right && key < root->right->key)
+      && node->right && key < node->right->key)
   {
-    root->right = avl_tree_rotate_right (root->right);
-    return avl_tree_rotate_left (root);
+    node->right = avl_tree_rotate_right (root, node->right);
+    return avl_tree_rotate_left (root, node);
   }
 
-  return root;
+  return node;
 }
 
 AvlTreeNode* avl_tree_insert (AvlTree *tree, int key, void *data)
@@ -232,7 +240,7 @@ AvlTreeNode* avl_tree_insert (AvlTree *tree, int key, void *data)
   if (! tree)
     return NULL;
 
-  new_node = avl_tree_insert_util (tree->root, key, data);
+  new_node = avl_tree_insert_util (&(tree->root), tree->root, key, data);
   if (new_node)
   {
     tree->size++;
@@ -284,53 +292,56 @@ void avl_tree_node_swap (AvlTreeNode *node_1, AvlTreeNode *node_2)
   node_2->info  = data;
 }
 
-AvlTreeNode* avl_tree_remove_util (AvlTreeNode *root, int key)
+AvlTreeNode* avl_tree_remove_util (AvlTreeNode **root, AvlTreeNode *node, int key)
 {
   int balance = 0;
   AvlTreeNode *temp = NULL;
 
-  if (key < root->key)
+  if (! node)
+    return NULL;
+
+  if (key < node->key)
   {
-    root->left = avl_tree_remove_util (root->left, key);
+    node->left = avl_tree_remove_util (root, node->left, key);
   }
-  else if (key > root->key)
+  else if (key > node->key)
   {
-    root->right = avl_tree_remove_util (root->right, key);
+    node->right = avl_tree_remove_util (root, node->right, key);
   }
   else
   {
-    if (avl_tree_is_leaf_node (root))
+    if (avl_tree_is_leaf_node (node))
     {
-      free (root);
-      root = NULL;
+      free (node);
+      node = NULL;
     }
-    else if (avl_tree_is_node_has_one_child (root))
+    else if (avl_tree_is_node_has_one_child (node))
     {
-      temp = (root->left) ? root->left : root->right;
+      temp = (node->left) ? node->left : node->right;
       if (temp)
       {
-        *root = *temp;
+        *node = *temp;
         free (temp);
         temp = NULL;
       }
     }
     else
     {
-      temp = avl_tree_get_min_successor (root->right);
+      temp = avl_tree_get_min_successor (node->right);
       if (temp)
       {
-        avl_tree_node_swap (root, temp);
-        root->right = avl_tree_remove_util (root->right, temp->key);
+        avl_tree_node_swap (node, temp);
+        node->right = avl_tree_remove_util (root, node->right, temp->key);
       }
     }
   }
 
-  if (! root)
-    return root;
+  if (! node)
+    return node;
 
   /* Update node height */
-  root->height = MAX(avl_tree_get_height (root->left), avl_tree_get_height(root->right)) + 1;
-  balance      = avl_tree_get_balance (root);
+  node->height = MAX(avl_tree_get_height (node->left), avl_tree_get_height(node->right)) + 1;
+  balance      = avl_tree_get_balance (node);
 
   /* 
    *       p
@@ -340,8 +351,8 @@ AvlTreeNode* avl_tree_remove_util (AvlTreeNode *root, int key)
    *  y
    */
   if (balance > 1
-      && avl_tree_get_balance (root->left) >= 0)
-    return avl_tree_rotate_right (root);
+      && avl_tree_get_balance (node->left) >= 0)
+    return avl_tree_rotate_right (root, node);
 
   /* 
    * p
@@ -351,8 +362,8 @@ AvlTreeNode* avl_tree_remove_util (AvlTreeNode *root, int key)
    *     y
    */
   if (balance < -1
-      && avl_tree_get_balance (root->right) <= 0)
-    return avl_tree_rotate_left (root);
+      && avl_tree_get_balance (node->right) <= 0)
+    return avl_tree_rotate_left (root, node);
 
   /* 
    *       p
@@ -362,10 +373,10 @@ AvlTreeNode* avl_tree_remove_util (AvlTreeNode *root, int key)
    *      y
    */
   if (balance > 1
-      && avl_tree_get_balance (root->left) < 0)
+      && avl_tree_get_balance (node->left) < 0)
   {
-    root->left = avl_tree_rotate_left (root->left);
-    return avl_tree_rotate_right (root);
+    node->left = avl_tree_rotate_left (root, node->left);
+    return avl_tree_rotate_right (root, node);
   }
 
   /* 
@@ -376,13 +387,13 @@ AvlTreeNode* avl_tree_remove_util (AvlTreeNode *root, int key)
    *   y
    */
   if (balance < -1
-      && avl_tree_get_balance (root->right) > 0)
+      && avl_tree_get_balance (node->right) > 0)
   {
-    root->right = avl_tree_rotate_right (root->right);
-    return avl_tree_rotate_left (root);
+    node->right = avl_tree_rotate_right (root, node->right);
+    return avl_tree_rotate_left (root, node);
   }
 
-  return root;
+  return node;
 }
 
 AvlTreeNode* avl_tree_remove (AvlTree *tree, int key)
@@ -392,7 +403,7 @@ AvlTreeNode* avl_tree_remove (AvlTree *tree, int key)
   if (! tree)
     return NULL;
 
-  node = avl_tree_remove_util (tree->root, key);
+  node = avl_tree_remove_util (&(tree->root), tree->root, key);
   if (node)
     tree->size--;
   return node;
