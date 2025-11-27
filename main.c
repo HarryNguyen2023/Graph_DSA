@@ -470,7 +470,7 @@ void rb_tree_test (void)
   node = rb_tree_node_search (tree, array[13]);
   printf ("Node %d is %s in the tree\n", array[13], (node) ? "" : "not");
 
-  for (i = 0; i < size; i += 3)
+  for (i = 0; i < size; i += 2)
     rb_tree_remove (tree, array[i]);
 
   rb_tree_print (tree);
@@ -561,83 +561,83 @@ void bp_tree_test (void)
 
 int main (int argc, char** argv) 
 {
-  Graph* graph = NULL;
-  PriorityQueue *pq = NULL;
-  int numVertices = 6;
-  Edge *edge = NULL;
+  // Graph* graph = NULL;
+  // PriorityQueue *pq = NULL;
+  // int numVertices = 6;
+  // Edge *edge = NULL;
   
-  graph = graph_init (numVertices);
-  if (graph == NULL) {
-    printf("Error: Could not initialize graph\n");
-    return -1;
-  }
-  graph_add_edge(graph, 0, 1, 8);
-  graph_add_edge(graph, 0, 4, 3);
-  graph_add_edge(graph, 1, 2, 9);
-  graph_add_edge(graph, 2, 3, 2);
-  graph_add_edge(graph, 4, 3, 7);
-  graph_add_edge(graph, 4, 5, 4);
-  graph_add_edge(graph, 5, 3, 5);
+  // graph = graph_init (numVertices);
+  // if (graph == NULL) {
+  //   printf("Error: Could not initialize graph\n");
+  //   return -1;
+  // }
+  // graph_add_edge(graph, 0, 1, 8);
+  // graph_add_edge(graph, 0, 4, 3);
+  // graph_add_edge(graph, 1, 2, 9);
+  // graph_add_edge(graph, 2, 3, 2);
+  // graph_add_edge(graph, 4, 3, 7);
+  // graph_add_edge(graph, 4, 5, 4);
+  // graph_add_edge(graph, 5, 3, 5);
 
-  graph_DFS (graph, 3);
-  graph_print(graph);
-  graph_BFS (graph, 3);
+  // graph_DFS (graph, 3);
+  // graph_print(graph);
+  // graph_BFS (graph, 3);
 
-  printf ("\n************** Dijkstra's Algorithm *****************\n");
-  graph_dijkstra (graph, 4);
+  // printf ("\n************** Dijkstra's Algorithm *****************\n");
+  // graph_dijkstra (graph, 4);
 
-  printf ("\n************** Bellman-Ford Algorithm **************** \n");
-  graph_bellman_ford (graph, 3);
+  // printf ("\n************** Bellman-Ford Algorithm **************** \n");
+  // graph_bellman_ford (graph, 3);
 
-  printf ("\n************** Circular Buffer Test ***************** \n");
-  cirbuff_test ();
+  // printf ("\n************** Circular Buffer Test ***************** \n");
+  // cirbuff_test ();
 
-  printf ("\n*************** Kruskal's Algorithm ***************** \n");
-  graph_kruskal (graph);
+  // printf ("\n*************** Kruskal's Algorithm ***************** \n");
+  // graph_kruskal (graph);
 
-  printf ("\n***************** Prim's Algorithm ****************** \n");
-  graph_prim (graph, 1);
+  // printf ("\n***************** Prim's Algorithm ****************** \n");
+  // graph_prim (graph, 1);
 
-  printf ("\n************ Ford-Fulkerson's Algorithm ************* \n");
-  /* Only use for directed graph */
-  // graph_ford_fulkerson (graph, 0, 3);
+  // printf ("\n************ Ford-Fulkerson's Algorithm ************* \n");
+  // /* Only use for directed graph */
+  // // graph_ford_fulkerson (graph, 0, 3);
 
-  printf ("\n************ Floyd-Warshall's Algorithm ************* \n");
-  graph_floyd_warshall (graph);
+  // printf ("\n************ Floyd-Warshall's Algorithm ************* \n");
+  // graph_floyd_warshall (graph);
 
-  graph_deinit (graph);
+  // graph_deinit (graph);
 
-  printf ("\n************ Huffman Coding's Algorithm ************* \n");
-  huffman_coding_test();
+  // printf ("\n************ Huffman Coding's Algorithm ************* \n");
+  // huffman_coding_test();
 
-  printf ("\n******* Longest Common Subsequent's Algorithm ******** \n");
-  char str1[] = "Giayeuminhchau";
-  char str2[] = "Giaminhchau";
-  lcs(str1, str2);
+  // printf ("\n******* Longest Common Subsequent's Algorithm ******** \n");
+  // char str1[] = "Giayeuminhchau";
+  // char str2[] = "Giaminhchau";
+  // lcs(str1, str2);
 
-  printf ("\n**************** Sort Algorithms ***************** \n");
-  measure_function_time_clock (bubble_sort_test);
-  measure_function_time_clock (selection_sort_test);
-  measure_function_time_clock (insertion_sort_test);
-  measure_function_time_clock (count_sort_test);
-  measure_function_time_clock (radix_sort_test);
-  measure_function_time_clock (bucket_sort_test);
-  measure_function_time_clock (heap_sort_test);
-  measure_function_time_clock (shell_sort_test);
-  measure_function_time_clock (merge_sort_test);
-  measure_function_time_clock (quick_sort_test);
+  // printf ("\n**************** Sort Algorithms ***************** \n");
+  // measure_function_time_clock (bubble_sort_test);
+  // measure_function_time_clock (selection_sort_test);
+  // measure_function_time_clock (insertion_sort_test);
+  // measure_function_time_clock (count_sort_test);
+  // measure_function_time_clock (radix_sort_test);
+  // measure_function_time_clock (bucket_sort_test);
+  // measure_function_time_clock (heap_sort_test);
+  // measure_function_time_clock (shell_sort_test);
+  // measure_function_time_clock (merge_sort_test);
+  // measure_function_time_clock (quick_sort_test);
 
   printf ("\n****************** AVL Tree ******************* \n");
-  avl_tree_test ();
+  // avl_tree_test ();
 
   printf ("\n*************** Red Black Tree **************** \n");
-  // rb_tree_test ();
+  rb_tree_test ();
 
   printf ("\n****************** B Tree ********************* \n");
   // b_tree_test ();
 
   printf ("\n***************** B+ Tree ********************* \n");
-  bp_tree_test ();
+  // bp_tree_test ();
 
   return 0;
 }

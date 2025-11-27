@@ -594,8 +594,11 @@ int rb_tree_remove_util (RedBlackTreeNode **root, RedBlackTreeNode* node, int ke
     return rb_tree_remove_util (root, temp->right, key);
   }
 
-  if (orig_color == BLACK_COLOR)
+  if (orig_color == BLACK_COLOR
+      && rep_node && rep_node->color == BLACK_COLOR)
     rb_tree_remove_balance_fix (root, rep_node);
+  else if (rep_node)
+    rep_node->color = BLACK_COLOR;
 
   return 0;
 }
