@@ -244,7 +244,12 @@ BPlusTreeNode* bp_tree_split_childs (BPlusTreeNode **root, BPlusTreeNode *node, 
         printf ("[%s,%d] Fail to allocate memory for sibling node\n", __func__, __LINE__);
         return NULL;
       }
-      node->next = sib;
+      if (node->is_leaf)
+      {
+        if (node->next)
+          sib->next = node->next;
+        node->next = sib;
+      }
     }
     else
       bp_tree_insert_node (sib, node->key[i], node->data[i], node->childs[i + 1]);
@@ -700,4 +705,29 @@ int bp_tree_remove (BPlusTree *tree, int key)
     tree->size--;
 
   return 0;
+}
+
+void bp_tree_linked_test (BPlusTree *tree)
+{
+  BPlusTreeNode *node = NULL;
+  int i = 0;
+
+  if (! tree || ! tree->root || ! tree->size)
+    return;
+
+  node = tree->root;
+  /* Get the left most node */
+  while (node && node->childs[0])
+    node = node->childs[0];
+
+  do
+  {
+    printf ("(%d", node->key[0]);
+    for (i = 1; i < node->count; ++i)
+      printf (",%d", node->key[i]);
+    printf (") -> ");
+    node = node->next;
+  } while (node);
+
+  return;
 }

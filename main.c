@@ -550,10 +550,11 @@ void bp_tree_test (void)
   node = bp_tree_search (tree, rand, &i);
   printf ("Node %d is%s in the tree\n", rand, (node && i >= 0) ? "" : " not");
 
-  for (i = 1; i < size; i += 2)
-    bp_tree_remove (tree, array[i]);
+  bp_tree_linked_test (tree);
+  // for (i = 1; i < size; i += 2)
+  //   bp_tree_remove (tree, array[i]);
 
-  bp_tree_print_2d (tree);
+  // bp_tree_print_2d (tree);
 
   bp_tree_delete (tree);
   return;
@@ -631,13 +632,13 @@ int main (int argc, char** argv)
   // avl_tree_test ();
 
   printf ("\n*************** Red Black Tree **************** \n");
-  rb_tree_test ();
+  // rb_tree_test ();
 
   printf ("\n****************** B Tree ********************* \n");
   // b_tree_test ();
 
   printf ("\n***************** B+ Tree ********************* \n");
-  // bp_tree_test ();
+  bp_tree_test ();
 
   return 0;
 }
