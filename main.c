@@ -551,10 +551,12 @@ void bp_tree_test (void)
   printf ("Node %d is%s in the tree\n", rand, (node && i >= 0) ? "" : " not");
 
   bp_tree_linked_test (tree);
-  // for (i = 1; i < size; i += 2)
-  //   bp_tree_remove (tree, array[i]);
 
-  // bp_tree_print_2d (tree);
+  for (i = 0; i < size; i += 2)
+    bp_tree_remove (tree, array[i]);
+
+  bp_tree_print_2d (tree);
+  bp_tree_linked_test (tree);
 
   bp_tree_delete (tree);
   return;

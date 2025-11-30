@@ -482,6 +482,7 @@ BPlusTreeNode* bp_tree_merge_node (BPlusTreeNode* left, BPlusTreeNode *right)
     left->data[i + left->count] = right->data[i];
   }
   left->count += right->count;
+  left->next = right->next;
 
   bp_tree_node_delete (right);
   return left;
@@ -489,7 +490,7 @@ BPlusTreeNode* bp_tree_merge_node (BPlusTreeNode* left, BPlusTreeNode *right)
 
 void bp_tree_node_fill (BPlusTreeNode **root, BPlusTreeNode *node)
 {
-  int i, parent_index;
+  int i, parent_index, child_index;
   BPlusTreeNode *parent = NULL, *sib = NULL, *temp = NULL;
 
   parent = node->parent;
@@ -506,7 +507,11 @@ void bp_tree_node_fill (BPlusTreeNode **root, BPlusTreeNode *node)
       if (sib->childs[i])
         sib->childs[i]->parent = node;
     }
+    child_index = node->count;
     temp = bp_tree_merge_node (node, sib);
+    bp_tree_merge_node (node->childs[child_index], node->childs[child_index + 1]);
+    for (i = child_index + 1; i <= temp->count; ++i)
+      node->childs[i] = node->childs[i + 1];
   }
   else
   {
@@ -535,7 +540,8 @@ void bp_tree_node_fill (BPlusTreeNode **root, BPlusTreeNode *node)
   if (parent == *root
       && parent->count > 1)
   {
-    bp_tree_insert_node (temp, parent->key[parent_index], NULL, NULL);
+    if (node != parent->childs[0])
+      bp_tree_insert_node (temp, parent->key[parent_index], NULL, NULL);
     bp_tree_remove_node (parent, parent_index);
     parent->childs[parent_index] = temp;
     for (i = parent_index + 1; i <= parent->count; ++i)
@@ -632,11 +638,13 @@ void bp_tree_remove_from_non_leaf (BPlusTreeNode **root, BPlusTreeNode *node, in
     temp = bp_tree_get_inorder_pred (node, index);
     if (temp)
     {
+      /* Remove the key in the internal node */
       bp_tree_remove_node (node, index);
       bp_tree_insert_node (node, temp->key[temp->count - 1], NULL, NULL);
-      sib = bp_tree_get_inorder_succ (node, index);
+      sib = temp->next;
       if (sib)
       {
+        /* Remove the corresponding key in the leaf node */
         bp_tree_remove_node (sib, 0);
         bp_tree_insert_node (sib, temp->key[temp->count - 1], temp->data[temp->count - 1], NULL);
       }
@@ -648,8 +656,10 @@ void bp_tree_remove_from_non_leaf (BPlusTreeNode **root, BPlusTreeNode *node, in
     temp = bp_tree_get_inorder_succ (node, index);
     if (temp)
     {
+      /* Remove the key in the internal node */
       bp_tree_remove_node (node, index);
       bp_tree_insert_node (node, temp->key[1], NULL, NULL);
+      /* Remove the corresponding key in the leaf node */
       bp_tree_remove_until (root, node->childs[index + 1], t, temp->key[0]);
     }
   }
@@ -661,7 +671,9 @@ void bp_tree_remove_from_non_leaf (BPlusTreeNode **root, BPlusTreeNode *node, in
       for (i = index + 1; i <= node->count - 1; ++i)
         node->childs[i] = node->childs[i + 1];
     }
+    /* Remove the corresponding key in the leaf node */
     bp_tree_remove_until (root, temp, t, node->key[index]);
+    /* Remove the key in the internal node */
     bp_tree_remove_node (node, index);
     if (node->count < t)
     {
@@ -726,8 +738,11 @@ void bp_tree_linked_test (BPlusTree *tree)
     for (i = 1; i < node->count; ++i)
       printf (",%d", node->key[i]);
     printf (") -> ");
+
     node = node->next;
   } while (node);
+
+  printf ("\n");
 
   return;
 }
