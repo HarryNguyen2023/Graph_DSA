@@ -17,6 +17,7 @@
 #include "lib/red_black_tree.h"
 #include "lib/b_tree.h"
 #include "lib/b_plus_tree.h"
+#include "lib/ptree.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)
@@ -519,6 +520,41 @@ void b_tree_test (void)
   return;
 }
 
+void ptree_test (void)
+{
+  struct ptree* tree = NULL;
+  struct ptree_node* node = NULL;
+  int max_key_len = sizeof (unsigned int) * 8;
+  int i, size;
+  unsigned char array[][5] = {"ABCD", "ABCE", "DCAE", "DKMN", "DKMH"};
+
+  size = sizeof (array) / sizeof (array[0]);
+
+  tree = ptree_init (max_key_len);
+  if (! tree)
+  {
+    printf ("[%s,%d] Fail to create Patricia tree\n", __func__, __LINE__);
+    return;
+  }
+
+  for (i = 0; i < size; ++i)
+    ptree_node_get (tree, (unsigned char *)&array[i][0], max_key_len);
+
+  ptree_print (tree);
+
+  for (i = 0; i < size; i += 2)
+  {
+    node = ptree_node_lookup (tree, (unsigned char *)&array[i][0], max_key_len);
+    printf ("\nNode %X is %s in the tree\n", (unsigned char *)&array[i][0], (node) ? "" : "not");
+    ptree_node_remove (node);
+  }
+
+  ptree_print (tree);
+
+  ptree_free (tree);
+  return;
+}
+
 void bp_tree_test (void)
 {
   BPlusTree* tree = NULL;
@@ -640,7 +676,10 @@ int main (int argc, char** argv)
   // b_tree_test ();
 
   printf ("\n***************** B+ Tree ********************* \n");
-  bp_tree_test ();
+  // bp_tree_test ();
+
+  printf ("\n************* Patricia Tree ******************* \n");
+  ptree_test ();
 
   return 0;
 }
