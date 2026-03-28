@@ -3,10 +3,11 @@
 #include <string.h>
 #include "priority_queue.h"
 #include "binary_tree.h"
-#include "huffman_code.h"
 #include "hash_table.h"
+#include "huffman_code.h"
 
-#define MAX_TREE_HEIGHT     (10)
+#define MAX_TREE_HEIGHT                   (10)
+#define MAX_SYMBOL_TABLE_RANGE            (128) //There are 128 symbols in the basic ASCII table
 
 int char_in_str (char *s, char c, int len)
 {
@@ -168,14 +169,15 @@ void huffman_code_store (BinTreeNode *root, char arr[], int top, HashTable *tabl
   }
 }
 
-BinTreeNode *huffman_coding_util (char *symbol, int *freq, int symbol_num, HuffmanData **huffman_data)
+BinTreeNode *huffman_coding_util (HashTable *symbol_tbl, int symbol_num, HuffmanData **huffman_data)
 {
   PriorityQueue *pq = NULL;
   HuffmanData *temp = NULL;
   BinTreeNode *left = NULL, *right = NULL, *top = NULL, *node = NULL;
-  int i;
+  int i, j, *freq;
+  char *symbol;
 
-  if (! symbol || ! freq || ! symbol_num || ! huffman_data)
+  if (! symbol_tbl || ! symbol_num || ! huffman_data)
     return NULL;
 
   pq = pq_create (symbol_num, huffman_data_cmp, NULL);
@@ -193,11 +195,12 @@ BinTreeNode *huffman_coding_util (char *symbol, int *freq, int symbol_num, Huffm
     return NULL;
   }
 
-  for (i = 0; i < symbol_num; ++i)
+  j = 0;
+  HASH_TBL_TRAVERSE(symbol_tbl, i, symbol, freq)
   {
-    (*huffman_data)[i].freq  = freq[i];
-    (*huffman_data)[i].item  = symbol[i];
-    node = bin_tree_node_create ((void *)&(*huffman_data)[i], huffman_data_dump);
+    (*huffman_data)[j].freq  = *freq;
+    (*huffman_data)[j].item  = *symbol;
+    node = bin_tree_node_create ((void *)&(*huffman_data)[j++], huffman_data_dump);
     if (! node)
     {
       printf ("[%s,%d] Fail to create Binary Tree node\n", __func__, __LINE__);
@@ -233,28 +236,50 @@ BinTreeNode *huffman_coding_util (char *symbol, int *freq, int symbol_num, Huffm
 
 int huffman_encoding (char *s, int len, char **out_str, int *out_str_len, BinTreeNode **root, HuffmanData **huffman_data)
 {
-  char *symbol = NULL;
-  int *freq = NULL, symbol_num = 0, i, c_index;
-  HashTable *table = NULL;
+  int ret, *symbol_freq = NULL;
+  char symbol[2];
+  int symbol_num = 0, i;
+  HashTable *table = NULL, *symbol_tbl = NULL;
   char *arr = NULL, *prefix_code = NULL, key[2];
 
   if (! s || ! len)
     return -1;
 
   /* Get the number of appearance of each character */
+  symbol_tbl = hash_tbl_create ((unsigned int)MAX_SYMBOL_TABLE_RANGE);
+  if (! symbol_tbl)
+  {
+    printf ("[%s,%d] Error: Fail to allocate memory for hash symbol table!", __func__, __LINE__);
+    return -1;
+  }
+
   for (i = 0; i < len; ++i)
   {
-    if (! (c_index = char_in_str (symbol, s[i], symbol_num)))
+    symbol[0] = s[i];
+    symbol[1] = '\0';
+    /* Create new hash entry if the symbol not found before, else increase the number*/
+    ret = hash_tbl_get (symbol_tbl, (const char *)symbol, (void **)&symbol_freq);
+    if (ret == 0 && symbol_freq)
     {
-      symbol  = (char *)realloc(symbol, (++symbol_num) * sizeof (char));
-      freq    = (int *)realloc(freq, symbol_num * sizeof(int));
-      symbol[symbol_num - 1]  = s[i];
-      freq[symbol_num - 1]    = 1;
+      (*symbol_freq)++;
     }
     else
     {
-      if (c_index >= 0)
-        freq[c_index]++;
+      symbol_freq = (int *)malloc(sizeof(int));
+      if (! symbol_freq)
+      {
+        printf ("[%s,%d] Error: Fail to allocate memory \
+                for data of the hash symbol table!", __func__, __LINE__);
+        return -1;
+      }
+  
+      *symbol_freq = 1;
+      ret = hash_tbl_insert (symbol_tbl, (const char *)symbol, 1, (void *)symbol_freq, NULL);
+      if (ret != 0)
+      {
+        printf ("[%s,%d] Error: Fail to insert new symbol into the hash symbol table!", __func__, __LINE__);
+        return -1;
+      }
     }
   }
 
@@ -266,6 +291,7 @@ int huffman_encoding (char *s, int len, char **out_str, int *out_str_len, BinTre
   }
   memset (arr, 0, (MAX_TREE_HEIGHT + 1) * sizeof (char));
 
+  symbol_num = symbol_tbl->size;
   table = hash_tbl_create ((unsigned int)symbol_num * 3);
   if (! table)
   {
@@ -273,7 +299,7 @@ int huffman_encoding (char *s, int len, char **out_str, int *out_str_len, BinTre
     goto EXIT;
   }
 
-  *root = huffman_coding_util (symbol, freq, symbol_num, huffman_data);
+  *root = huffman_coding_util (symbol_tbl, symbol_num, huffman_data);
   if (! *root)
   {
     printf ("[%s,%d] Fail to build huffman code tree\n", __func__, __LINE__);
@@ -298,10 +324,8 @@ int huffman_encoding (char *s, int len, char **out_str, int *out_str_len, BinTre
   }
 
 EXIT:
-  if (symbol) free (symbol);
-  symbol = NULL;
-  if (freq) free(freq);
-  freq = NULL;
+  if (symbol_tbl) hash_tbl_delete(symbol_tbl);
+  symbol_tbl = NULL;
   if (arr)  free(arr);
   arr = NULL;
   if (table) hash_tbl_delete (table);

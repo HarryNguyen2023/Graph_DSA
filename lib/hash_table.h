@@ -15,9 +15,14 @@ struct HashSet
 
 typedef struct HashTable
 {
+  unsigned int size;
   unsigned int range;
   HashSet **table;
 } HashTable;
+
+#define HASH_TBL_TRAVERSE(T, I, K, D)       \
+  for(I = 0; I < (T)->range; ++I)           \
+    if ((((T)->table)[I]) && (K = ((((T)->table)[I])->key)) && (D = ((((T)->table)[I])->data)))
 
 HashTable *hash_tbl_create (unsigned int range);
 void hash_tbl_delete (HashTable *table);

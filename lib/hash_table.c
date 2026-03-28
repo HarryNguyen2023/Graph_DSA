@@ -18,12 +18,13 @@ HashTable *hash_tbl_create (unsigned int range)
     return NULL;
   }
 
+  table->size  = 0;
   table->range = range;
   table->table = (HashSet **)malloc(range * sizeof (HashSet *));
   if (! table->table)
   {
     printf ("[%s,%d] Fail to allocate memory for hash table\n", __func__, __LINE__);
-    goto ERR_EXIT1;
+    goto ERR_EXIT;
   }
 
   for (i = 0; i < range; ++i)
@@ -31,7 +32,7 @@ HashTable *hash_tbl_create (unsigned int range)
 
   return table;
 
-ERR_EXIT1:
+ERR_EXIT:
   if (table)  free(table);
   table = NULL;
   return NULL;
@@ -87,7 +88,6 @@ void hash_tbl_delete (HashTable *table)
   table->table = NULL;
   table->range = 0;
   free (table);
-  table = NULL;
   return;
 }
 
@@ -167,6 +167,7 @@ int hash_tbl_insert (HashTable *table, const char *key, int key_len, void *data,
   if (table->table[hash_index] == NULL)
   {
     table->table[hash_index] = set;
+    (table->size)++;
   }
   else
   {
@@ -238,6 +239,9 @@ int hash_tbl_remove (HashTable *table, const char *key, int key_len)
 
   hash_set_delete (temp);
   temp = NULL;
+
+  if (table->table[hash_index] == NULL)
+    (table->size)--;
 
   return 0;
 }
