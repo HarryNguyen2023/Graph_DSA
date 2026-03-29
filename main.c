@@ -639,7 +639,7 @@ int main (int argc, char** argv)
 
   // printf ("\n************ Ford-Fulkerson's Algorithm ************* \n");
   // /* Only use for directed graph */
-  // // graph_ford_fulkerson (graph, 0, 3);
+  // graph_ford_fulkerson (graph, 0, 3);
 
   // printf ("\n************ Floyd-Warshall's Algorithm ************* \n");
   // graph_floyd_warshall (graph);
@@ -676,10 +676,10 @@ int main (int argc, char** argv)
   // b_tree_test ();
 
   printf ("\n***************** B+ Tree ********************* \n");
-  // bp_tree_test ();
+  bp_tree_test ();
 
   printf ("\n************* Patricia Tree ******************* \n");
-  ptree_test ();
+  // ptree_test ();
 
   return 0;
 }

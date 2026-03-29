@@ -315,7 +315,7 @@ int huffman_encoding (char *s, int len, char **out_str, int *out_str_len, BinTre
   {
     key[0] = s[i];
     key[1] = '\0';
-    if (hash_tbl_get (table, key, (void *)&prefix_code) == 0)
+    if (hash_tbl_get (table, key, (void **)&prefix_code) == 0)
     {
       *out_str_len += strlen (prefix_code);
       *out_str = (char *)realloc(*out_str, (*out_str_len + 1) * sizeof (char));
@@ -329,6 +329,7 @@ EXIT:
   if (arr)  free(arr);
   arr = NULL;
   if (table) hash_tbl_delete (table);
+  table = NULL;
   return 0;
 }
 

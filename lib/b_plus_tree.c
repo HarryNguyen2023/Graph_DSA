@@ -359,50 +359,10 @@ void bp_tree_remove_node (BPlusTreeNode *node, int index)
   return;
 }
 
-BPlusTreeNode* bp_tree_get_inorder_pred (BPlusTreeNode *node, int idx)
-{
-  BPlusTreeNode* pred = NULL;
-
-  if (! node)
-    return NULL;
-
-  if (idx < 0 && idx >= node->count)
-  {
-    printf ("[%s,%d] Invalid index range %d\n", __func__, __LINE__, idx);
-    return NULL;
-  }
-
-  pred = node->childs[idx];
-  while (! pred->is_leaf)
-    pred = pred->childs[pred->count];
-
-  return pred;
-}
-
-BPlusTreeNode* bp_tree_get_inorder_succ (BPlusTreeNode *node, int idx)
-{
-  BPlusTreeNode* succ = NULL;
-
-  if (! node)
-    return NULL;
-
-  if (idx < 0 && idx >= node->count)
-  {
-    printf ("[%s,%d] Invalid index range %d\n", __func__, __LINE__, idx);
-    return NULL;
-  }
-
-  succ = node->childs[idx + 1];
-  while (! succ->is_leaf)
-    succ = succ->childs[0];
-
-  return succ;
-}
-
 int bp_tree_borrow_from_left_sib (BPlusTreeNode *node, int t)
 {
   BPlusTreeNode *sib = NULL, *parent = NULL;
-  int i = 0, ret = 0;
+  int i = 0, j, ret = 0;
 
   parent = node->parent;
   if (! parent)
@@ -422,14 +382,32 @@ int bp_tree_borrow_from_left_sib (BPlusTreeNode *node, int t)
   if (sib->count <= t)
     return -1;
 
-  /* Move the parent key down to the current node */
-  bp_tree_insert_node (node, sib->key[sib->count - 1], sib->data[sib->count - 1], NULL);
+  if (node->is_leaf)
+  {
+    /* Copy rightmost key and data of the left sibling to the current node */
+    bp_tree_insert_node (node, sib->key[sib->count - 1], sib->data[sib->count - 1], NULL);
 
-  /* Put the rightmost key of the left sibling to the parent */
-  bp_tree_insert_node (parent, sib->key[sib->count - 1], NULL, NULL);
-  bp_tree_remove_node (sib, sib->count - 1);
+    /* Put the rightmost key of the left sibling to the parent */
+    bp_tree_insert_node (parent, sib->key[sib->count - 1], NULL, NULL);
+    bp_tree_remove_node (sib, sib->count - 1);
 
-  bp_tree_remove_node (parent, i);
+    bp_tree_remove_node (parent, i);
+  }
+  else
+  {
+    /*
+     * Copy parent separator key to current node
+     * Move the rightmost child of the left sibling to the current node
+     */
+    bp_tree_insert_node (node, parent->key[i - 1], NULL, NULL);
+    for (j = node->count; j >= 1; --j)
+      node->childs[j] = node->childs[j - 1];
+    node->childs[0] = sib->childs[sib->count];
+    sib->childs[sib->count] = NULL;
+
+    parent->key[i - 1] = sib->key[sib->count - 1];
+    bp_tree_remove_node (sib, sib->count - 1);
+  }
 
   return 0;
 }
@@ -437,7 +415,7 @@ int bp_tree_borrow_from_left_sib (BPlusTreeNode *node, int t)
 int bp_tree_borrow_from_right_sib (BPlusTreeNode *node, int t)
 {
   BPlusTreeNode *sib = NULL, *parent = NULL;
-  int i = 0, ret = 0;
+  int i = 0, j, ret = 0;
 
   parent = node->parent;
   if (! parent)
@@ -457,148 +435,133 @@ int bp_tree_borrow_from_right_sib (BPlusTreeNode *node, int t)
   if (sib->count <= t)
     return -1;
 
-  /* Move the parent key down to the current node */
-  bp_tree_insert_node (node, sib->key[0], sib->data[0], NULL);
+  if (node->is_leaf)
+  {
+    /* Copy leftmost key and data of the right sibling to the current node */
+    bp_tree_insert_node (node, sib->key[0], sib->data[0], NULL);
 
-  /* Put the leftmost key of the right sibling to the parent */
-  bp_tree_insert_node (parent, sib->key[1], NULL, NULL);
-  bp_tree_remove_node (sib, 0);
+    /* Put the leftmost key of the right sibling to the parent */
+    bp_tree_remove_node (sib, 0);
+    bp_tree_insert_node (parent, sib->key[0], NULL, NULL);
 
-  bp_tree_remove_node (parent, i);
+    bp_tree_remove_node (parent, i);
+  }
+  else
+  {
+    /*
+     * Copy parent separator key to current node
+     * Move the leftmost child of the right sibling to the current node
+     */
+    bp_tree_insert_node (node, parent->key[i], NULL, sib->childs[0]);
+    sib->childs[0] = NULL;
+
+    for (j = 1; j < sib->count + 1; ++j)
+      sib->childs[j - 1] = sib->childs[j];
+
+    /* Put the leftmost key of the right sibling to the parent */
+    parent->key[i] = sib->key[0];
+    bp_tree_remove_node (sib, 0);
+  }
 
   return 0;
 }
 
-BPlusTreeNode* bp_tree_merge_node (BPlusTreeNode* left, BPlusTreeNode *right)
+
+BPlusTreeNode* bp_tree_merge_node (BPlusTreeNode* left, BPlusTreeNode *right, int left_index)
 {
   int i = 0;
+  BPlusTreeNode *parent;
 
-  if (! left || ! right)
+  if (! left || ! right
+      || ((parent = left->parent)
+          && (parent == NULL) || (parent != right->parent)))
     return NULL;
+
+  if ((left->is_leaf && ! right->is_leaf)
+      || (! left->is_leaf && right->is_leaf))
+    return NULL;
+
+  if (! left->is_leaf)
+  {
+    left->key[left->count] = parent->key[left_index];
+    left->count++;
+  }
 
   for (i = 0; i < right->count; ++i)
   {
     left->key[i + left->count] = right->key[i];
-    left->data[i + left->count] = right->data[i];
+
+    if (left->is_leaf)
+      left->data[i + left->count] = right->data[i];
+
+    if (! left->is_leaf && ! right->is_leaf)
+    {
+      left->childs[i + left->count] = right->childs[i];
+      right->childs[i]->parent = left;
+    }
   }
+  if (! left->is_leaf && ! right->is_leaf)
+  {
+    left->childs[left->count + right->count] = right->childs[right->count];
+    right->childs[right->count]->parent = left;
+  }
+
   left->count += right->count;
   left->next = right->next;
+
+  for (i = left_index + 2; i < parent->count + 1; ++i)
+    parent->childs[i - 1] = parent->childs[i];
+  parent->childs[parent->count] = NULL;
+  bp_tree_remove_node (parent, left_index);
 
   bp_tree_node_delete (right);
   return left;
 }
 
-void bp_tree_node_fill (BPlusTreeNode **root, BPlusTreeNode *node)
+void bp_tree_handle_underflow(BPlusTreeNode **root, BPlusTreeNode *node, int t)
 {
-  int i, parent_index, child_index;
-  BPlusTreeNode *parent = NULL, *sib = NULL, *temp = NULL;
+  int ret = 0, index = 0;
+  BPlusTreeNode* parent, *left_sib, *right_sib;
+
+  if (! root || ! node)
+    return;
+
+  /* Root can have fewer keys than t/2 */
+  if (node == *root)
+    return;
 
   parent = node->parent;
   if (! parent)
     return;
 
-  if (node == parent->childs[0])
+  while (index <= parent->count)
   {
-    parent_index = 0;
-    sib = parent->childs[1];
-    for (i = 0; i <= sib->count; ++i)
-    {
-      node->childs[i + node->count + 1] = sib->childs[i];
-      if (sib->childs[i])
-        sib->childs[i]->parent = node;
-    }
-    child_index = node->count;
-    temp = bp_tree_merge_node (node, sib);
-    bp_tree_merge_node (node->childs[child_index], node->childs[child_index + 1]);
-    for (i = child_index + 1; i <= temp->count; ++i)
-      node->childs[i] = node->childs[i + 1];
+    if (parent->childs[index] == node)
+      break;
+    index++;
   }
-  else
-  {
-    while (i < parent->count)
-    {
-      if (parent->childs[i] == node)
-        break;
-      i++;
-    }
 
-    if (i > parent->count)
+  if (index > 0)
+    if ((ret = bp_tree_borrow_from_left_sib (node, t)) == 0)
       return;
 
-    sib = parent->childs[i - 1];
-    parent_index = i - 1;
-
-    for (i = 0; i <= node->count; ++i)
-    {
-      sib->childs[i + sib->count + 1] = node->childs[i];
-      if (node->childs[i])
-        node->childs[i]->parent = sib;
-    }
-    temp = bp_tree_merge_node (sib, node);
-  }
-
-  if (parent == *root
-      && parent->count > 1)
-  {
-    if (node != parent->childs[0])
-      bp_tree_insert_node (temp, parent->key[parent_index], NULL, NULL);
-    bp_tree_remove_node (parent, parent_index);
-    parent->childs[parent_index] = temp;
-    for (i = parent_index + 1; i <= parent->count; ++i)
-      parent->childs[i] = parent->childs[i + 1];
-  }
-  else
-  {
-    for (i = 0; i < parent->count; ++i)
-      bp_tree_insert_node (temp, parent->key[i], NULL, NULL);
-
-    *root = temp;
-    bp_tree_node_delete (parent);
-  }
-}
-
-void bp_tree_merge_from_parent (BPlusTreeNode **root, int t, BPlusTreeNode *node)
-{
-  int i = 0, j, key;
-  BPlusTreeNode *temp = NULL, *parent = NULL;
-
-  if (! node || ! (parent = node->parent))
-    return;
-
-  if (node == parent->childs[0])
-  {
-    bp_tree_remove_node (parent, 0);
-    temp = bp_tree_merge_node (node, parent->childs[1]);
-    parent->childs[0] = temp;
-    for (i = 1; i <= parent->count; ++i)
-      parent->childs[i] = parent->childs[i + 1];
-  }
-  else
-  {
-    while (i < parent->count)
-    {
-      if (parent->childs[i] == node)
-        break;
-      i++;
-    }
-
-    if (i > parent->count)
+  if (index < parent->count)
+    if ((ret = bp_tree_borrow_from_right_sib (node, t)) == 0)
       return;
 
-    bp_tree_remove_node (parent, i - 1);
-
-    temp = bp_tree_merge_node (parent->childs[i - 1], node);
-    temp->parent->childs[i - 1] = temp;
-    for (j = i; j <= parent->count; ++j)
-      parent->childs[j] = parent->childs[j + 1];
-  }
-
-  if (parent->count < t)
+  if (index > 0)
   {
-    bp_tree_node_fill (root, parent);
+    if ((left_sib = parent->childs[index - 1]))
+      bp_tree_merge_node (left_sib, node, index - 1);
+  }
+  else if (index < parent->count)
+  {
+    if ((right_sib = parent->childs[index + 1]))
+      bp_tree_merge_node(node, right_sib, index);
   }
 
-  return;
+  if (parent->count < t && parent != *root)
+    bp_tree_handle_underflow (root, parent, t);
 }
 
 void bp_tree_remove_from_leaf (BPlusTreeNode **root, BPlusTreeNode *node, int t, int index)
@@ -610,76 +573,11 @@ void bp_tree_remove_from_leaf (BPlusTreeNode **root, BPlusTreeNode *node, int t,
     return;
 
   bp_tree_remove_node (node, index);
-  if (node->count < t)
-  {
-    ret = bp_tree_borrow_from_left_sib (node, t);
-    if (ret != 0)
-    {
-      ret = bp_tree_borrow_from_right_sib (node, t);
-      if (ret != 0)
-        bp_tree_merge_from_parent (root, t, node);
-    }
-  }
+  if (node->count < t && node != *root)
+    bp_tree_handle_underflow (root, node, t);
 
-  return;
-}
-
-void bp_tree_remove_from_non_leaf (BPlusTreeNode **root, BPlusTreeNode *node, int t, int index)
-{
-  int i, ret;
-  BPlusTreeNode *temp = NULL, *sib = NULL, *parent = NULL;
-
-  if (! node || node->is_leaf
-      || index < 0 || index >= node->count)
-    return;
-
-  if (node->childs[index] && node->childs[index]->count > t)
-  {
-    temp = bp_tree_get_inorder_pred (node, index);
-    if (temp)
-    {
-      /* Remove the key in the internal node */
-      bp_tree_remove_node (node, index);
-      bp_tree_insert_node (node, temp->key[temp->count - 1], NULL, NULL);
-      sib = temp->next;
-      if (sib)
-      {
-        /* Remove the corresponding key in the leaf node */
-        bp_tree_remove_node (sib, 0);
-        bp_tree_insert_node (sib, temp->key[temp->count - 1], temp->data[temp->count - 1], NULL);
-      }
-      bp_tree_remove_until (root, node->childs[index], t, temp->key[temp->count - 1]);
-    }
-  }
-  else if (node->childs[index + 1] && node->childs[index + 1]->count > t)
-  {
-    temp = bp_tree_get_inorder_succ (node, index);
-    if (temp)
-    {
-      /* Remove the key in the internal node */
-      bp_tree_remove_node (node, index);
-      bp_tree_insert_node (node, temp->key[1], NULL, NULL);
-      /* Remove the corresponding key in the leaf node */
-      bp_tree_remove_until (root, node->childs[index + 1], t, temp->key[0]);
-    }
-  }
-  else
-  {
-    temp = bp_tree_merge_node (node->childs[index], node->childs[index + 1]);
-    if (temp)
-    {
-      for (i = index + 1; i <= node->count - 1; ++i)
-        node->childs[i] = node->childs[i + 1];
-    }
-    /* Remove the corresponding key in the leaf node */
-    bp_tree_remove_until (root, temp, t, node->key[index]);
-    /* Remove the key in the internal node */
-    bp_tree_remove_node (node, index);
-    if (node->count < t)
-    {
-      bp_tree_node_fill (root, node);
-    }
-  }
+  while ((*root)->count == 0 && ! (*root)->is_leaf)
+    *root = (*root)->childs[0];
 
   return;
 }
@@ -700,8 +598,6 @@ BPlusTreeNode* bp_tree_remove_until (BPlusTreeNode **root, BPlusTreeNode *node, 
   {
     if (node->is_leaf)
       bp_tree_remove_from_leaf (root, node, t, i);
-    else
-      bp_tree_remove_from_non_leaf (root, node, t, i);
     return node;
   }
 
