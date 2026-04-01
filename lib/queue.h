@@ -10,12 +10,13 @@ typedef struct QueueNode
 
 typedef struct Queue
 {
-  int size;
-  QueueNode* front;
-  QueueNode* rear;
+  int         capacity;
+  int         size;
+  QueueNode*  front;
+  QueueNode*  rear;
 } Queue;
 
-Queue* queue_create (void);
+Queue* queue_create (int capacity);
 int queue_delete (Queue* queue);
 int queue_is_empty (Queue* queue);
 int queue_enqueue (Queue* queue, void* data);

@@ -10,7 +10,8 @@
                 "-I", "${workspaceFolder}\\lib",
                 "*.c", "${workspaceFolder}\\lib\\*.c",
                 "-o",
-                "${fileDirname}\\build\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}\\build\\${fileBasenameNoExtension}.exe",
+                "-lws2_32"
             ],
             "options": {
                 "cwd": "${fileDirname}"

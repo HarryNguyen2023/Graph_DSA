@@ -3,7 +3,7 @@
 #include <string.h>
 #include "queue.h"
 
-Queue* queue_create (void) 
+Queue* queue_create (int capacity)
 {
   Queue *queue = (Queue *)malloc(sizeof(Queue));
   if (! queue)
@@ -11,9 +11,11 @@ Queue* queue_create (void)
     printf("Error: Could not allocate memory for queue\n");
     return NULL;
   }
-  queue->size = 0;
-  queue->front = NULL;
-  queue->rear = NULL;
+
+  queue->capacity = capacity;
+  queue->size     = 0;
+  queue->front    = NULL;
+  queue->rear     = NULL;
 
   return queue;
 }
@@ -54,6 +56,12 @@ int queue_enqueue (Queue* queue, void *data)
   if (queue == NULL)
   {
     printf("[%s,%d] Error: Queue is NULL\n", __func__, __LINE__);
+    return -1;
+  }
+
+  if (queue->size >= queue->capacity)
+  {
+    printf("[%s,%d] Error: Queue is already full\n", __func__, __LINE__);
     return -1;
   }
 

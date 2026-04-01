@@ -4,6 +4,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#else /* LINUX */
+  #include <sys/select.h>
+  #include <sys/socket.h>
+  #include <sys/time.h>
+  #include <netinet/in.h>
+#endif
 #include "lib/graph.h"
 #include "lib/stack.h"
 #include "lib/queue.h"
@@ -18,6 +27,7 @@
 #include "lib/b_tree.h"
 #include "lib/b_plus_tree.h"
 #include "lib/ptree.h"
+#include "lib/thread.h"
 
 #define CIRBUFF_MAX_SIZE    (100)
 #define CIRBUFF_ELEM_SIZE   (4)

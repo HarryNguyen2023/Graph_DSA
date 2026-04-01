@@ -333,7 +333,7 @@ void b_tree_print_2d_util (BTreeNode *root)
   }
 
   /* Compute the height of the B Tree */
-  q = queue_create ();
+  q = queue_create (20);
   if (! q) return;
 
   queue_enqueue (q, btree_queue_node_create (root, 0));
@@ -357,7 +357,7 @@ void b_tree_print_2d_util (BTreeNode *root)
   queue_delete (q); q = NULL;
 
   /* Print the tree level by level */
-  q = queue_create ();
+  q = queue_create (20);
   queue_enqueue (q, btree_queue_node_create (root, 0));
   while (! queue_is_empty(q))
   {

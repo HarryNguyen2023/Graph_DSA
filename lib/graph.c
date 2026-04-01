@@ -373,7 +373,7 @@ int graph_BFS (Graph* graph, int start_vertex)
     return -1;
   }
 
-  queue = queue_create ();
+  queue = queue_create (20);
   if (! queue)
   {
     printf ("[%s,%d] Error: Fail to allocate memory for queue\n", __func__, __LINE__);
@@ -1073,7 +1073,7 @@ int bfs_util (Graph *graph, int s, int t, int *parent)
   }
   memset (visited, 0, graph->numVertices * sizeof(int));
 
-  queue = queue_create ();
+  queue = queue_create (20);
   if (! queue)
   {
     printf ("[%s,%d] Fail to create queue for BFS algorithm\n", __func__, __LINE__);
