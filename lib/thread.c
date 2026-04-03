@@ -53,7 +53,7 @@ int gettimeofday_windows(struct timeval *tv, void *tz) {
 
 int timeval_sub(const struct timeval *tv_last, const struct timeval *tv_now, struct timeval *res)
 {
-  long int total_us_tv_now, total_us_tv_last, total_us_tv_res;
+  int64_t total_us_tv_now, total_us_tv_last, total_us_tv_res;
 
   if (! tv_last || ! tv_now || ! res)
     return -1;
@@ -273,7 +273,7 @@ int thread_add_timer (EventLoop *event_loop, const struct timeval time_val, void
 void thread_run (Event *event)
 {
   if (event)
-    (*event->cb_func)(event->input);
+    (*event->cb_func)(event);
 }
 
 int thread_get (Queue* queue, Event** event)
@@ -287,7 +287,7 @@ int thread_get (Queue* queue, Event** event)
 int thread_fetch (EventLoop *event_loop, Event **event)
 {
   struct timeval tv, sub_tv;
-  QueueNode *q_node;
+  QueueNode *q_node, *temp_node;
   Event *time_event, *read_event, *write_event;
   int ret = 0, i;
   char *key, fd_key[5] = {'\0'};;
@@ -315,19 +315,22 @@ int thread_fetch (EventLoop *event_loop, Event **event)
   ret = gettimeofday_windows(&tv, NULL);
   if (ret == 0)
   {
-    EVENT_QUEUE_TRAVERSE(event_loop->timer_queue, q_node, time_event)
+    EVENT_QUEUE_TRAVERSE(event_loop->timer_queue, q_node, temp_node, time_event)
     {
-      ret = timeval_sub (&tv, &(time_event->data.time.time_now), &sub_tv);
+      ret = timeval_sub (&(time_event->data.time.time_now), &tv, &sub_tv);
       if (ret != 0)
         continue;
 
-      /* If timer overflow, reset the current time value and add the event into the mid prio queue */
+      /* If timer overflow, remove the timer event from timer
+       * queue, and add the event into the mid prio queue
+       */
       if ((sub_tv.tv_sec >= time_event->data.time.time_val.tv_sec)
           || (sub_tv.tv_sec == time_event->data.time.time_val.tv_sec
               && sub_tv.tv_usec >= time_event->data.time.time_val.tv_usec))
       {
-        memcpy(&(time_event->data.time.time_now), &tv, sizeof(struct timeval));
         queue_enqueue (event_loop->mid_prio_queue, (void *)time_event);
+        queue_delete_node (event_loop->timer_queue, q_node);
+        q_node = NULL;
       }
     }
   }

@@ -21,5 +21,6 @@ int queue_delete (Queue* queue);
 int queue_is_empty (Queue* queue);
 int queue_enqueue (Queue* queue, void* data);
 int queue_dequeue (Queue* queue, void **data);
+int queue_delete_node (Queue* queue, QueueNode *node);
 
 #endif /* __QUEUE_H__ */

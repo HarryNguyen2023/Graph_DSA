@@ -42,8 +42,26 @@ typedef struct EventLoop
 #endif /* HAVE_THREAD_SELECT */
 } EventLoop;
 
-#define EVENT_QUEUE_TRAVERSE(Q,N,E)               \
-  for (N = (Q)->front; N != NULL; N = (N)->next)  \
-    if (E = (Event *)N)
+enum TestEvent
+{
+  EVENT_ADD,
+  EVENT_DELETE
+};
+
+#define EVENT_QUEUE_TRAVERSE(Q,N,T,E)       \
+  for (N = (Q)->front, (N != NULL) ? ((T = (N)->next)) : (T = NULL); (N != NULL); N = T, T = (T) ? ((T)->next) : NULL)    \
+    if (E = (Event *)((N)->data))
+
+EventLoop* thread_init (void);
+int thread_add_event (EventLoop *event_loop, const unsigned int event,
+                      void (*cb_func)(void *), void *input);
+int thread_add_read (EventLoop *event_loop, const int fd,
+                     void (*cb_func)(void *), void *input);
+int thread_add_write (EventLoop *event_loop, const int fd,
+                      void (*cb_func)(void *), void *input);
+int thread_add_timer (EventLoop *event_loop, const struct timeval time_val,
+                      void (*cb_func)(void *), void *input);
+int thread_fetch (EventLoop *event_loop, Event **event);
+void thread_run (Event *event);
 
 #endif /* __THREAD_H__*/

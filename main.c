@@ -36,6 +36,8 @@
 #define MAX_RAND            100
 #define SORT_ARR_LEN        500
 
+EventLoop *event_loop;
+
 void cirbuff_print_int (void *data)
 {
   int *num = NULL;
@@ -608,6 +610,50 @@ void bp_tree_test (void)
   return;
 }
 
+void thread_event_cb_test (void *input)
+{
+  Event *thread;
+  char *thread_name;
+
+  thread = (Event *)input;
+  if (! thread)
+    return;
+
+  thread_name = (char *)thread->input;
+  if (! thread_name)
+    return;
+
+  if (thread->data.event == EVENT_ADD)
+    printf ("Executing %s event ADD!\n", thread_name);
+  else if (thread->data.event == EVENT_DELETE)
+    printf ("Executing %s event DEL!\n", thread_name);
+  else
+    printf("Executing %s event UNKNOWN!\n", thread_name);
+
+  free (thread);
+}
+
+void thread_timer_cb_test (void *input)
+{
+  Event *thread;
+  char *thread_name;
+  struct timeval tv;
+
+  thread = (Event *)input;
+  if (! thread)
+    return;
+
+  memset(&tv, 0, sizeof(struct timeval));
+  memcpy(&tv, &thread->data.time.time_val, sizeof(struct timeval));
+
+  thread_name = (char *)thread->input;
+  if (thread_name)
+    printf("Thread %s is running!\n", thread_name);
+
+  free (thread);
+  thread_add_timer (event_loop, tv, thread_timer_cb_test, thread_name);
+}
+
 int main (int argc, char** argv) 
 {
   // Graph* graph = NULL;
@@ -686,10 +732,39 @@ int main (int argc, char** argv)
   // b_tree_test ();
 
   printf ("\n***************** B+ Tree ********************* \n");
-  bp_tree_test ();
+  // bp_tree_test ();
 
   printf ("\n************* Patricia Tree ******************* \n");
   // ptree_test ();
+
+  printf ("\n************* Event Loop Test ******************* \n");
+  Event *thread_event = NULL;
+
+  event_loop = thread_init();
+  if (! event_loop)
+  {
+    printf("[%s,%d]Error: Fail to init the thread event loop!", __func__, __LINE__);
+    return -1;
+  }
+
+  /******************** Timer thread *******************/
+  struct timeval tv;
+  tv.tv_sec   = 3;
+  tv.tv_usec  = 0;
+
+  thread_add_timer(event_loop, tv, thread_timer_cb_test, "Timer 1");
+  thread_add_event(event_loop, EVENT_ADD, thread_event_cb_test, "Test Event");
+
+  tv.tv_sec   = 6;
+  tv.tv_usec  = 0;
+  thread_add_timer(event_loop, tv, thread_timer_cb_test, "Timer 2");
+  Sleep(3000);
+
+  while (thread_fetch(event_loop, &thread_event))
+  {
+    thread_run(thread_event);
+    thread_event = NULL;
+  }
 
   return 0;
 }
