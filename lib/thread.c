@@ -19,7 +19,7 @@
 
 struct timeval thread_queue_overtime = {
   .tv_sec  = 0,
-  .tv_usec = 500000
+  .tv_usec = 0
 };
 
 int gettimeofday_windows(struct timeval *tv, void *tz) {
@@ -359,7 +359,7 @@ int thread_fetch (EventLoop *event_loop, Event **event)
   }
 
   ret = select(nfds, &event_loop->readfds, &event_loop->writefds, &exceptfds, &thread_queue_overtime);
-  if (ret != 0)
+  if (ret <= 0)
     return 1;
 
   for (i = 0; i < nfds; ++i)

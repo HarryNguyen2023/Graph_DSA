@@ -654,6 +654,35 @@ void thread_timer_cb_test (void *input)
   thread_add_timer (event_loop, tv, thread_timer_cb_test, thread_name);
 }
 
+void thread_read_cb_test(void *input)
+{
+  Event *event = (Event *)input;
+  char buf[64] = {0};
+  int n;
+
+  if (! event)
+    return;
+
+  n = recv(event->data.fd, buf, sizeof(buf)-1, 0);
+  if (n > 0)
+    printf("Read event: received '%s'\n", buf);
+
+  free(event);
+}
+
+void thread_write_cb_test(void *input)
+{
+  Event *event = (Event *)input;
+  const char *msg = "Hello from write event!";
+
+  if (! event)
+    return;
+
+  send(event->data.fd, msg, strlen(msg), 0);
+  printf("Write event: sent message '%s'\n", msg);
+  free(event);
+}
+
 int main (int argc, char** argv) 
 {
   // Graph* graph = NULL;
@@ -747,7 +776,7 @@ int main (int argc, char** argv)
     return -1;
   }
 
-  /******************** Timer thread *******************/
+  /******************** Timer & Event thread *******************/
   struct timeval tv;
   tv.tv_sec   = 3;
   tv.tv_usec  = 0;
@@ -758,6 +787,35 @@ int main (int argc, char** argv)
   tv.tv_sec   = 6;
   tv.tv_usec  = 0;
   thread_add_timer(event_loop, tv, thread_timer_cb_test, "Timer 2");
+
+  /******************** Read & Write thread *******************/
+  #ifdef _WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2,2), &wsaData);
+#endif
+
+    int sv[2];
+#ifdef _WIN32
+    // Windows does not have socketpair, so use TCP sockets
+    SOCKET listen_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = 5987;
+    bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr));
+    listen(listen_fd, 1);
+    int addrlen = sizeof(addr);
+    getsockname(listen_fd, (struct sockaddr*)&addr, &addrlen);
+    sv[0] = socket(AF_INET, SOCK_STREAM, 0);
+    connect(sv[0], (struct sockaddr*)&addr, addrlen);
+    sv[1] = accept(listen_fd, NULL, NULL);
+    closesocket(listen_fd);
+#else
+    socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
+#endif
+  thread_add_read(event_loop, sv[1], thread_read_cb_test, NULL);
+  thread_add_write(event_loop, sv[0], thread_write_cb_test, NULL);
+
   Sleep(3000);
 
   while (thread_fetch(event_loop, &thread_event))
@@ -768,3 +826,4 @@ int main (int argc, char** argv)
 
   return 0;
 }
+

@@ -195,7 +195,7 @@ int hash_tbl_find (HashTable *table, const char *key, HashSet **set)
   hash_index = hash_tbl_hash_func (table, key);
   if (! table->table[hash_index])
   {
-    printf ("[%s,%d] Key %s not exist in hash table\n", __func__, __LINE__, key);
+    // printf ("[%s,%d] Key %s not exist in hash table\n", __func__, __LINE__, key);
     return -1;
   }
 
@@ -210,20 +210,19 @@ int hash_tbl_find (HashTable *table, const char *key, HashSet **set)
   }
 
   *set = temp;
-  return 0;
+  return hash_index;
 }
 
 int hash_tbl_remove (HashTable *table, const char *key, int key_len)
 {
   HashSet *temp = NULL;
-  int rv = 0;
-  unsigned int hash_index = 0;
+  int hash_index = 0;
 
   if (! table  || ! table->table|| ! key)
     return -1;
 
-  rv = hash_tbl_find(table, key, &temp);
-  if (rv != 0 || temp == NULL)
+  hash_index = hash_tbl_find(table, key, &temp);
+  if (hash_index == -1 || temp == NULL)
   {
     printf ("[%s,%d] Key %s not exist in hash table\n", __func__, __LINE__, key);
     return -1;
@@ -284,9 +283,9 @@ int hash_tbl_get (HashTable* table, const char *key, void **data)
     return -1;
 
   rv = hash_tbl_find(table, key, &temp);
-  if (rv != 0 || temp == NULL)
+  if (rv == -1 || temp == NULL)
   {
-    printf ("[%s,%d] Key %s not exist in hash table\n", __func__, __LINE__, key);
+    // printf ("[%s,%d] Key %s not exist in hash table\n", __func__, __LINE__, key);
     return -1;
   }
 
