@@ -16,7 +16,8 @@
 #include "hash_table.h"
 #include "thread.h"
 
-#define THREAD_MAX_SIZE     (20)
+#define THREAD_MAX_SIZE     (40)
+#define IO_FD_MAX_SIZE      (300)
 
 struct timeval thread_queue_overtime = {
   .tv_sec  = 0,
@@ -109,14 +110,14 @@ EventLoop* thread_init (void)
     goto EXIT;
   }
 
-  event_loop->read_event = hash_tbl_create (THREAD_MAX_SIZE);
+  event_loop->read_event = hash_tbl_create (IO_FD_MAX_SIZE);
   if (! event_loop->read_event)
   {
     printf ("[%s,%d]Error: Fail to allocate memory for read event hash table!", __func__, __LINE__);
     goto EXIT;
   }
 
-  event_loop->write_event = hash_tbl_create (THREAD_MAX_SIZE);
+  event_loop->write_event = hash_tbl_create (IO_FD_MAX_SIZE);
   if (! event_loop->write_event)
   {
     printf ("[%s,%d]Error: Fail to allocate memory for write event hash table!", __func__, __LINE__);

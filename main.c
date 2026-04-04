@@ -665,12 +665,37 @@ void thread_read_cb_test(void *input)
 
   fd = event->data.fd;
 
-  n = recv(event->data.fd, buf, sizeof(buf)-1, 0);
+  n = recv(fd, buf, sizeof(buf) - 1, 0);
   if (n > 0)
     printf("Read event: received '%s'\n", buf);
 
   free(event);
   thread_add_read (event_loop, fd, thread_read_cb_test, NULL);
+}
+
+void thread_read_accept_cb_test(void *input)
+{
+  Event *event = (Event *)input;
+  char buf[64] = {0};
+  int n, listen_fd, fd;
+
+  if (! event)
+    return;
+
+  listen_fd = event->data.fd;
+  fd = accept(listen_fd, NULL, NULL);
+  if (fd <= 0)
+  {
+    printf ("[%s,%d]Error: Invalid fd value, %d", __func__, __LINE__, fd);
+    goto EXIT;
+  }
+
+  printf ("Accept new connection to server, fd:%d\n", fd);
+  thread_add_read (event_loop, fd, thread_read_cb_test, NULL);
+
+EXIT:
+  free(event);
+  thread_add_read(event_loop, listen_fd, thread_read_accept_cb_test, NULL);
 }
 
 void thread_write_cb_test(void *input)
@@ -686,7 +711,7 @@ void thread_write_cb_test(void *input)
   fd = event->data.fd;
 
   snprintf (write_msg, sizeof(write_msg), "Hello from %d write event!", *i);
-  send(event->data.fd, write_msg, strlen(write_msg), 0);
+  send(fd, write_msg, strlen(write_msg), 0);
   printf("Write event: sent message '%s'\n", write_msg);
 
   free(event);
@@ -694,7 +719,10 @@ void thread_write_cb_test(void *input)
   if (++(*i) < 20)
     thread_add_write (event_loop, fd, thread_write_cb_test, i);
   else
+  {
     closesocket(fd);
+    thread_add_event(event_loop, EVENT_DELETE, thread_event_cb_test, "Socket close Event");
+  }
 }
 
 int main (int argc, char** argv) 
@@ -812,24 +840,26 @@ int main (int argc, char** argv)
     int sv[2];
 #ifdef _WIN32
     // Windows does not have socketpair, so use TCP sockets
+    u_long mode = 1;
     SOCKET listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port = 5987;
+    addr.sin_port = htons(58670);
     bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr));
-    listen(listen_fd, 1);
+    listen(listen_fd, 20);
+    /* Set the socket to be non-blocking */
+    ioctlsocket(listen_fd, FIONBIO, &mode);
+    thread_add_read(event_loop, listen_fd, thread_read_accept_cb_test, NULL);
   
     int addrlen = sizeof(addr);
     getsockname(listen_fd, (struct sockaddr*)&addr, &addrlen);
     sv[0] = socket(AF_INET, SOCK_STREAM, 0);
     connect(sv[0], (struct sockaddr*)&addr, addrlen);
-    sv[1] = accept(listen_fd, NULL, NULL);
-    closesocket(listen_fd);
 #else
     socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
 #endif
-  thread_add_read(event_loop, sv[1], thread_read_cb_test, NULL);
+  // thread_add_read(event_loop, sv[1], thread_read_cb_test, NULL);
   thread_add_write (event_loop, sv[0], thread_write_cb_test, (void *)&i);
 
   Sleep(3000);
