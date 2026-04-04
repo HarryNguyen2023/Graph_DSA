@@ -499,6 +499,9 @@ int thread_fetch (EventLoop *event_loop, Event **event)
     }
   }
 
+  free (poll_fds);
+  poll_fds = NULL;
+
   return 1;
 }
 #endif /* HAVE_THREAD_POLL */

@@ -15,7 +15,7 @@ def connect_and_send(idx):
             print(f"Client {idx} error: {e}")
 
 threads = []
-for i in range(20):
+for i in range(50):
     t = threading.Thread(target=connect_and_send, args=(i,))
     t.start()
     threads.append(t)
