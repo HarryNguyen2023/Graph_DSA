@@ -1,7 +1,8 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
-#define HAVE_THREAD_SELECT
+#define HAVE_THREAD_POLL
+// #define HAVE_THREAD_SELECT
 
 typedef enum EventType
 {

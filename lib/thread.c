@@ -10,6 +10,7 @@
   #include <sys/socket.h>
   #include <sys/time.h>
   #include <netinet/in.h>
+  #include <poll.h>
 #endif
 #include "queue.h"
 #include "hash_table.h"
@@ -284,17 +285,16 @@ int thread_get (Queue* queue, Event** event)
   return 0;
 }
 
+#ifdef HAVE_THREAD_SELECT
 int thread_fetch (EventLoop *event_loop, Event **event)
 {
   struct timeval tv, sub_tv;
   QueueNode *q_node, *temp_node;
   Event *time_event, *read_event, *write_event;
   int ret = 0, i;
-  char *key, fd_key[5] = {'\0'};;
+  char *key, fd_key[5] = {'\0'};
   fd_set exceptfds;
-#ifdef HAVE_THREAD_SELECT
   int nfds;
-#endif /* HAVE_THREAD_SELECT */
 
   if (! event_loop || ! event)
     return 0;
@@ -336,7 +336,6 @@ int thread_fetch (EventLoop *event_loop, Event **event)
   }
 
   /* Check if there is any read/write event has been ready to add to low priortiy queue */
-#ifdef HAVE_THREAD_SELECT
   nfds = 0;
   FD_ZERO(&event_loop->readfds);
   FD_ZERO(&event_loop->writefds);
@@ -375,7 +374,8 @@ int thread_fetch (EventLoop *event_loop, Event **event)
         hash_tbl_remove (event_loop->read_event, fd_key, strlen(fd_key));
       }
     }
-    else if(FD_ISSET(i, &event_loop->writefds))
+
+    if(FD_ISSET(i, &event_loop->writefds))
     {
       memset(fd_key, 0, sizeof(fd_key));
       snprintf(fd_key, sizeof(fd_key), "%d", i);
@@ -387,7 +387,117 @@ int thread_fetch (EventLoop *event_loop, Event **event)
       }
     }
   }
-#endif /* HAVE_THREAD_SELECT */
 
   return 1;
 }
+#endif /* HAVE_THREAD_SELECT */
+
+#ifdef HAVE_THREAD_POLL
+int thread_fetch (EventLoop *event_loop, Event **event)
+{
+  struct timeval tv, sub_tv;
+  QueueNode *q_node, *temp_node;
+  Event *time_event, *read_event, *write_event;
+  int ret = 0, i, j;
+  char *key, fd_key[5] = {'\0'};
+  int nfds;
+  struct pollfd *poll_fds;
+
+  if (! event_loop || ! event)
+    return 0;
+
+  /* Run the event with highest priority first if exist */
+  if (thread_get(event_loop->high_prio_queue, event))
+    return 1;
+
+  /* If there is no high priority event, continue to check the mid priority */
+  if (thread_get(event_loop->mid_prio_queue, event))
+    return 1;
+
+  /* Finally, check the low priority queue */
+  if (thread_get(event_loop->low_prio_queue, event))
+    return 1;
+
+  /* Check if there is any timer event has reached timeout to add to mid priortiy queue */
+  ret = gettimeofday_windows(&tv, NULL);
+  if (ret == 0)
+  {
+    EVENT_QUEUE_TRAVERSE(event_loop->timer_queue, q_node, temp_node, time_event)
+    {
+      ret = timeval_sub (&(time_event->data.time.time_now), &tv, &sub_tv);
+      if (ret != 0)
+        continue;
+
+      /* If timer overflow, remove the timer event from timer
+       * queue, and add the event into the mid prio queue
+       */
+      if ((sub_tv.tv_sec >= time_event->data.time.time_val.tv_sec)
+          || (sub_tv.tv_sec == time_event->data.time.time_val.tv_sec
+              && sub_tv.tv_usec >= time_event->data.time.time_val.tv_usec))
+      {
+        queue_enqueue (event_loop->mid_prio_queue, (void *)time_event);
+        queue_delete_node (event_loop->timer_queue, q_node);
+        q_node = NULL;
+      }
+    }
+  }
+
+  /* Check if there is any read/write event has been ready to add to low priortiy queue */
+  j = 0;
+  nfds = event_loop->read_event->size + event_loop->write_event->size;
+  poll_fds = (struct pollfd *)malloc(nfds * sizeof(struct pollfd));
+  if (! poll_fds)
+    return 1;
+
+  HASH_TBL_TRAVERSE(event_loop->read_event, i, key, read_event)
+  {
+    poll_fds[j].fd      = read_event->data.fd;
+    poll_fds[j].events  = POLLIN;
+    j++;
+  }
+
+  HASH_TBL_TRAVERSE(event_loop->write_event, i, key, write_event)
+  {
+    poll_fds[j].fd      = write_event->data.fd;
+    poll_fds[j].events  = POLLOUT;
+    j++;
+  }
+
+#ifdef _WIN32
+  ret = WSAPoll(poll_fds, nfds, 0);
+#else
+  ret = poll(poll_fds, nfds, 0);
+#endif /* _WIN32 */
+  if (ret <= 0)
+    return 1;
+
+  for (i = 0; i < nfds; ++i)
+  {
+    if (poll_fds[i].revents & POLLIN)
+    {
+      memset(fd_key, 0, sizeof(fd_key));
+      snprintf(fd_key, sizeof(int), "%d", poll_fds[i].fd);
+      ret = hash_tbl_get(event_loop->read_event, fd_key, (void **)&read_event);
+      if (ret == 0 && read_event)
+      {
+        queue_enqueue(event_loop->low_prio_queue, read_event);
+        hash_tbl_remove (event_loop->read_event, fd_key, strlen(fd_key));
+      }
+    }
+
+    if(poll_fds[i].revents & POLLOUT)
+    {
+      memset(fd_key, 0, sizeof(fd_key));
+      snprintf(fd_key, sizeof(int), "%d", poll_fds[i].fd);
+      ret = hash_tbl_get(event_loop->write_event, fd_key, (void **)&write_event);
+      if (ret == 0 && write_event)
+      {
+        queue_enqueue(event_loop->low_prio_queue, write_event);
+        hash_tbl_remove (event_loop->write_event, fd_key, strlen(fd_key));
+      }
+    }
+  }
+
+  return 1;
+}
+#endif /* HAVE_THREAD_POLL */

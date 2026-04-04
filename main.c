@@ -658,29 +658,43 @@ void thread_read_cb_test(void *input)
 {
   Event *event = (Event *)input;
   char buf[64] = {0};
-  int n;
+  int n, fd;
 
   if (! event)
     return;
+
+  fd = event->data.fd;
 
   n = recv(event->data.fd, buf, sizeof(buf)-1, 0);
   if (n > 0)
     printf("Read event: received '%s'\n", buf);
 
   free(event);
+  thread_add_read (event_loop, fd, thread_read_cb_test, NULL);
 }
 
 void thread_write_cb_test(void *input)
 {
   Event *event = (Event *)input;
-  const char *msg = "Hello from write event!";
+  char write_msg[20] = {'\0'};
+  int *i, fd;
 
-  if (! event)
+  if (! event
+      || ! (i = (int *)event->input))
     return;
 
-  send(event->data.fd, msg, strlen(msg), 0);
-  printf("Write event: sent message '%s'\n", msg);
+  fd = event->data.fd;
+
+  snprintf (write_msg, sizeof(write_msg), "Hello from %d write event!", *i);
+  send(event->data.fd, write_msg, strlen(write_msg), 0);
+  printf("Write event: sent message '%s'\n", write_msg);
+
   free(event);
+
+  if (++(*i) < 20)
+    thread_add_write (event_loop, fd, thread_write_cb_test, i);
+  else
+    closesocket(fd);
 }
 
 int main (int argc, char** argv) 
@@ -751,19 +765,19 @@ int main (int argc, char** argv)
   // measure_function_time_clock (merge_sort_test);
   // measure_function_time_clock (quick_sort_test);
 
-  printf ("\n****************** AVL Tree ******************* \n");
+  // printf ("\n****************** AVL Tree ******************* \n");
   // avl_tree_test ();
 
-  printf ("\n*************** Red Black Tree **************** \n");
+  // printf ("\n*************** Red Black Tree **************** \n");
   // rb_tree_test ();
 
-  printf ("\n****************** B Tree ********************* \n");
+  // printf ("\n****************** B Tree ********************* \n");
   // b_tree_test ();
 
-  printf ("\n***************** B+ Tree ********************* \n");
+  // printf ("\n***************** B+ Tree ********************* \n");
   // bp_tree_test ();
 
-  printf ("\n************* Patricia Tree ******************* \n");
+  // printf ("\n************* Patricia Tree ******************* \n");
   // ptree_test ();
 
   printf ("\n************* Event Loop Test ******************* \n");
@@ -789,7 +803,8 @@ int main (int argc, char** argv)
   thread_add_timer(event_loop, tv, thread_timer_cb_test, "Timer 2");
 
   /******************** Read & Write thread *******************/
-  #ifdef _WIN32
+  int i = 0;
+#ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2,2), &wsaData);
 #endif
@@ -804,6 +819,7 @@ int main (int argc, char** argv)
     addr.sin_port = 5987;
     bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr));
     listen(listen_fd, 1);
+  
     int addrlen = sizeof(addr);
     getsockname(listen_fd, (struct sockaddr*)&addr, &addrlen);
     sv[0] = socket(AF_INET, SOCK_STREAM, 0);
@@ -814,10 +830,11 @@ int main (int argc, char** argv)
     socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
 #endif
   thread_add_read(event_loop, sv[1], thread_read_cb_test, NULL);
-  thread_add_write(event_loop, sv[0], thread_write_cb_test, NULL);
+  thread_add_write (event_loop, sv[0], thread_write_cb_test, (void *)&i);
 
   Sleep(3000);
 
+  /******************** Main thread loop *******************/
   while (thread_fetch(event_loop, &thread_event))
   {
     thread_run(thread_event);
